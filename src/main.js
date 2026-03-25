@@ -2,10 +2,11 @@
  * SMAJ Ecosystem Dashboard - Vanilla JS
  */
 import Chart from 'chart.js/auto';
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import Cropper from 'cropperjs';
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+// Initialize Gemini AI once
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 const livenessTasks = [
   { id: 'blink', text: 'Blink your eyes', prompt: 'Examine the sequence of images. Is the person blinking (eyes closed or partially closed) in at least one of these frames? If multiple frames are provided, compare them to detect motion.' },
@@ -304,15 +305,15 @@ const templates = {
 
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
         ${[
-          { label: 'Pi Balance', value: `${PI_BALANCE.toFixed(8)} Pi`, icon: 'bx bx-coin-stack', color: 'brand', toggle: true, subValue: `≈ ${formattedValue} GCV` },
-          { label: 'Active Orders', value: '14', icon: 'bx bx-package', color: 'blue' },
-          { label: 'Active Jobs', value: '7', icon: 'bx bx-briefcase', color: 'indigo' },
-          { label: 'Enrolled Courses', value: '9', icon: 'bx bx-book-open', color: 'violet' },
-          { label: 'Health Appointments', value: '3', icon: 'bx bx-plus-medical', color: 'rose' },
-          { label: 'Energy Payments', value: '11', icon: 'bx bx-bolt-circle', color: 'yellow' },
-          { label: 'Housing Bookings', value: '4', icon: 'bx bx-building-house', color: 'sky' },
-          { label: 'Swap Trades', value: '23', icon: 'bx bx-transfer-alt', color: 'cyan' },
-        ].map(stat => `
+        { label: 'Pi Balance', value: `${PI_BALANCE.toFixed(8)} Pi`, icon: 'bx bx-coin-stack', color: 'brand', toggle: true, subValue: `≈ ${formattedValue} GCV` },
+        { label: 'Active Orders', value: '14', icon: 'bx bx-package', color: 'blue' },
+        { label: 'Active Jobs', value: '7', icon: 'bx bx-briefcase', color: 'indigo' },
+        { label: 'Enrolled Courses', value: '9', icon: 'bx bx-book-open', color: 'violet' },
+        { label: 'Health Appointments', value: '3', icon: 'bx bx-plus-medical', color: 'rose' },
+        { label: 'Energy Payments', value: '11', icon: 'bx bx-bolt-circle', color: 'yellow' },
+        { label: 'Housing Bookings', value: '4', icon: 'bx bx-building-house', color: 'sky' },
+        { label: 'Swap Trades', value: '23', icon: 'bx bx-transfer-alt', color: 'cyan' },
+      ].map(stat => `
           <div class="p-6 rounded-3xl border border-neutral-200/60 bg-white shadow-sm hover:shadow-md transition-all group relative overflow-hidden">
             <div class="flex items-center justify-between mb-4">
               <div class="w-12 h-12 rounded-2xl flex items-center justify-center bg-${stat.color}-500/10 text-${stat.color}-600">
@@ -413,13 +414,13 @@ const templates = {
         </div>
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           ${[
-            { label: 'Full Name', value: 'SMAJ Pioneer' },
-            { label: 'Username', value: '@smaj_user' },
-            { label: 'Email', value: 'pioneer@smajpihub.com' },
-            { label: 'Phone', value: '+1 (415) 555-0199' },
-            { label: 'Country', value: 'United States' },
-            { label: 'Wallet Address', value: 'GA7H...P91X' },
-          ].map(item => `
+      { label: 'Full Name', value: 'SMAJ Pioneer' },
+      { label: 'Username', value: '@smaj_user' },
+      { label: 'Email', value: 'pioneer@smajpihub.com' },
+      { label: 'Phone', value: '+1 (415) 555-0199' },
+      { label: 'Country', value: 'United States' },
+      { label: 'Wallet Address', value: 'GA7H...P91X' },
+    ].map(item => `
             <div class="space-y-1">
               <p class="text-xs font-bold text-neutral-400 uppercase tracking-wider">${item.label}</p>
               <p class="font-semibold text-lg">${item.value}</p>
@@ -1027,13 +1028,13 @@ const templates = {
             </thead>
             <tbody class="divide-y divide-neutral-50">
               ${[
-                { cat: 'Store Order', ref: '#ST-9201', date: '2026-02-19', amount: '0.00002546 Pi', status: 'Completed' },
-                { cat: 'Job Contract', ref: '#JB-4022', date: '2026-02-17', amount: '0.00007321 Pi', status: 'Pending' },
-                { cat: 'Event Ticket', ref: '#EV-1408', date: '2026-02-14', amount: '0.00000795 Pi', status: 'Active' },
-                { cat: 'Housing Booking', ref: '#HS-8860', date: '2026-02-12', amount: '0.00005093 Pi', status: 'Pending' },
-                { cat: 'Transport Request', ref: '#TR-3391', date: '2026-02-11', amount: '0.00000382 Pi', status: 'Completed' },
-                { cat: 'Agro Purchase', ref: '#AG-7410', date: '2026-02-10', amount: '0.00002864 Pi', status: 'Completed' },
-              ].map(order => `
+      { cat: 'Store Order', ref: '#ST-9201', date: '2026-02-19', amount: '0.00002546 Pi', status: 'Completed' },
+      { cat: 'Job Contract', ref: '#JB-4022', date: '2026-02-17', amount: '0.00007321 Pi', status: 'Pending' },
+      { cat: 'Event Ticket', ref: '#EV-1408', date: '2026-02-14', amount: '0.00000795 Pi', status: 'Active' },
+      { cat: 'Housing Booking', ref: '#HS-8860', date: '2026-02-12', amount: '0.00005093 Pi', status: 'Pending' },
+      { cat: 'Transport Request', ref: '#TR-3391', date: '2026-02-11', amount: '0.00000382 Pi', status: 'Completed' },
+      { cat: 'Agro Purchase', ref: '#AG-7410', date: '2026-02-10', amount: '0.00002864 Pi', status: 'Completed' },
+    ].map(order => `
                 <tr class="group hover:bg-neutral-50/50 transition-colors">
                   <td class="py-4 text-sm font-bold">${order.cat}</td>
                   <td class="py-4 text-sm text-neutral-500 font-mono">${order.ref}</td>
@@ -1089,11 +1090,11 @@ const templates = {
       </div>
       <div class="space-y-4">
         ${[
-          { title: 'Order update', desc: 'Your order #ST-9201 was delivered successfully.', project: 'store', time: '2 hours ago' },
-          { title: 'Job message', desc: 'Designer shared milestone files for contract #JB-4022.', project: 'jobs', time: '5 hours ago' },
-          { title: 'Payment confirmation', desc: '65 Pi payment for SMAJ PI ENERGY completed.', project: 'wallet', time: '1 day ago' },
-          { title: 'System alert', desc: 'New wallet session detected from Chrome on Windows.', project: 'wallet', time: '2 days ago' },
-        ].map(notice => `
+      { title: 'Order update', desc: 'Your order #ST-9201 was delivered successfully.', project: 'store', time: '2 hours ago' },
+      { title: 'Job message', desc: 'Designer shared milestone files for contract #JB-4022.', project: 'jobs', time: '5 hours ago' },
+      { title: 'Payment confirmation', desc: '65 Pi payment for SMAJ PI ENERGY completed.', project: 'wallet', time: '1 day ago' },
+      { title: 'System alert', desc: 'New wallet session detected from Chrome on Windows.', project: 'wallet', time: '2 days ago' },
+    ].map(notice => `
           <div class="p-6 rounded-3xl border border-neutral-200/60 bg-white shadow-sm flex items-start gap-4 group hover:border-brand transition-colors">
             <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${notice.project === 'store' ? 'bg-brand/10 text-brand' : notice.project === 'jobs' ? 'bg-blue-500/10 text-blue-600' : 'bg-neutral-100 text-neutral-500'}">
               <i class='bx ${notice.project === 'store' ? 'bx-shopping-bag' : notice.project === 'jobs' ? 'bx-briefcase' : 'bx-bell'} text-xl'></i>
@@ -1390,11 +1391,10 @@ const templates = {
                     <td class="py-4 text-sm">${sub.country}</td>
                     <td class="py-4 text-sm text-neutral-500">${sub.date}</td>
                     <td class="py-4">
-                      <span class="px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest ${
-                        sub.status === 'verified' ? 'bg-emerald-100 text-emerald-600' : 
-                        sub.status === 'rejected' ? 'bg-rose-100 text-rose-600' : 
-                        'bg-amber-100 text-amber-600'
-                      }">${sub.status}</span>
+                      <span class="px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest ${sub.status === 'verified' ? 'bg-emerald-100 text-emerald-600' :
+        sub.status === 'rejected' ? 'bg-rose-100 text-rose-600' :
+          'bg-amber-100 text-amber-600'
+      }">${sub.status}</span>
                     </td>
                     <td class="py-4 text-right">
                       <div class="flex items-center justify-end gap-2">
@@ -1427,18 +1427,17 @@ let currentCropper = null;
 
 function showToast(message, type = 'error') {
   const toast = document.createElement('div');
-  toast.className = `fixed top-6 left-1/2 -translate-x-1/2 z-[100] px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-3 animate-in slide-in-from-top-4 duration-300 ${
-    type === 'error' ? 'bg-rose-500 text-white' : 'bg-emerald-500 text-white'
-  }`;
-  
+  toast.className = `fixed top-6 left-1/2 -translate-x-1/2 z-[100] px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-3 animate-in slide-in-from-top-4 duration-300 ${type === 'error' ? 'bg-rose-500 text-white' : 'bg-emerald-500 text-white'
+    }`;
+
   const icon = type === 'error' ? 'bx-error-circle' : 'bx-check-circle';
   toast.innerHTML = `
     <i class='bx ${icon} text-xl'></i>
     <p class="font-bold text-sm">${message}</p>
   `;
-  
+
   document.body.appendChild(toast);
-  
+
   setTimeout(() => {
     toast.classList.add('animate-out', 'fade-out', 'slide-out-to-top-4');
     setTimeout(() => toast.remove(), 300);
@@ -1519,14 +1518,14 @@ function captureCameraImage(onCapture) {
   async function startCamera() {
     try {
       // Try environment camera first, then fallback
-      const constraints = { 
-        video: { 
+      const constraints = {
+        video: {
           facingMode: { ideal: 'environment' },
           width: { ideal: 1920 },
           height: { ideal: 1080 }
-        } 
+        }
       };
-      
+
       try {
         stream = await navigator.mediaDevices.getUserMedia(constraints);
       } catch (e) {
@@ -1569,26 +1568,19 @@ function captureCameraImage(onCapture) {
 
 async function verifyImageClarity(dataUrl, side) {
   try {
-    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
     const base64Data = dataUrl.split(',')[1];
-    
-    const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
-      contents: {
-        parts: [
-          { inlineData: { data: base64Data, mimeType: 'image/jpeg' } },
-          { text: `Analyze this KYC document image (${side} side). 
-                   Check if the document is clearly visible, well-lit, and all text is legible.
-                   If the image is slightly grainy but the text is still readable, it should pass.
-                   If it's too dark or blurry to read the details, it should fail.
-                   Respond ONLY with a JSON object: {"isClear": boolean, "reason": "string"}` }
-        ]
-      },
-      config: { responseMimeType: "application/json" }
-    });
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
-    const result = JSON.parse(response.text);
-    return result;
+    const prompt = `Analyze this KYC document image (${side} side). 
+                    Check if the document is clearly visible, well-lit, and all text is legible.
+                    Respond ONLY with a JSON object: {"isClear": boolean, "reason": "string"}`;
+
+    const result = await model.generateContent([
+      { inlineData: { data: base64Data, mimeType: "image/jpeg" } },
+      prompt,
+    ]);
+
+    return JSON.parse(result.response.text());
   } catch (err) {
     console.error('Clarity Check Error:', err);
     return { isClear: true, reason: "Check failed, assuming clear" }; // Fallback
@@ -1626,10 +1618,10 @@ function openCropper(imageSrc, onCrop) {
   const image = modal.querySelector('#cropper-image');
   const loader = modal.querySelector('#cropper-loader');
   const applyBtn = modal.querySelector('#apply-crop');
-  
+
   const initCropper = () => {
     if (currentCropper) return;
-    
+
     try {
       currentCropper = new Cropper(image, {
         aspectRatio: NaN, // Free crop
@@ -1681,18 +1673,18 @@ function openCropper(imageSrc, onCrop) {
   modal.querySelector('#cancel-crop').onclick = close;
   applyBtn.onclick = () => {
     if (!currentCropper) return;
-    
+
     try {
       const croppedCanvas = currentCropper.getCroppedCanvas({
         maxWidth: 2048,
         maxHeight: 2048,
       });
-      
+
       if (!croppedCanvas) {
         showToast('Could not crop image. Please try again.');
         return;
       }
-      
+
       onCrop(croppedCanvas.toDataURL('image/jpeg', 0.9));
       close();
     } catch (err) {
@@ -1704,10 +1696,10 @@ function openCropper(imageSrc, onCrop) {
 
 function renderSection(sectionId) {
   if (!templates[sectionId]) return;
-  
+
   activeSection = sectionId;
   contentArea.innerHTML = templates[sectionId]();
-  
+
   // Update sidebar profile mini
   const profileMini = document.querySelector('aside .mx-4');
   if (profileMini) {
@@ -1759,7 +1751,7 @@ function renderSection(sectionId) {
         userProfile.email = document.getElementById('profile-email').value;
         userProfile.phone = document.getElementById('profile-phone').value;
         userProfile.address = document.getElementById('profile-address').value;
-        
+
         saveBtn.innerHTML = "<i class='bx bx-check'></i> Saved";
         setTimeout(() => {
           renderSection('profile');
@@ -1819,7 +1811,7 @@ function renderSection(sectionId) {
       });
 
       const nextBtn = document.getElementById('next-to-liveness');
-      
+
       // File Upload Front
       const frontInput = document.getElementById('kyc-file-front');
       const frontUploadView = document.getElementById('front-upload-view');
@@ -1876,7 +1868,7 @@ function renderSection(sectionId) {
           if (url) {
             // Use a CORS proxy to avoid issues with external URLs
             const proxiedUrl = `https://images.weserv.nl/?url=${encodeURIComponent(url)}`;
-            
+
             const img = new Image();
             img.crossOrigin = "anonymous";
             img.onload = () => {
@@ -1970,7 +1962,7 @@ function renderSection(sectionId) {
           if (url) {
             // Use a CORS proxy to avoid issues with external URLs
             const proxiedUrl = `https://images.weserv.nl/?url=${encodeURIComponent(url)}`;
-            
+
             const img = new Image();
             img.crossOrigin = "anonymous";
             img.onload = () => {
@@ -2038,7 +2030,7 @@ function renderSection(sectionId) {
           userProfile.kycData.dob = dob;
           userProfile.kycData.country = country;
           userProfile.kycData.docType = docType;
-          
+
           userProfile.kycStep = 2;
           renderSection('kyc');
         };
@@ -2068,7 +2060,7 @@ function renderSection(sectionId) {
 
           userProfile.kycStatus = 'pending';
           renderSection('kyc');
-          
+
           // Add to admin submissions
           kycSubmissions.unshift({
             id: `KYC-${Math.floor(Math.random() * 10000)}`,
@@ -2212,7 +2204,7 @@ function initTransactionChart() {
 
   // Prepare data: Sort by date and group amounts
   const sortedData = [...TRANSACTION_DATA].sort((a, b) => new Date(a.date) - new Date(b.date));
-  
+
   new Chart(ctx, {
     type: 'bar',
     data: {
@@ -2328,7 +2320,7 @@ async function startLivenessCheck() {
   const canvas = document.getElementById('liveness-canvas');
   const instructionText = document.getElementById('liveness-text');
   const startBtn = document.getElementById('start-liveness');
-  
+
   if (!video || !canvas || !instructionText) return;
 
   try {
@@ -2339,10 +2331,10 @@ async function startLivenessCheck() {
       console.warn('User camera failed, trying any camera:', e);
       stream = await navigator.mediaDevices.getUserMedia({ video: true });
     }
-    
+
     video.srcObject = stream;
     await video.play().catch(e => console.warn("Video play failed:", e));
-    
+
     startBtn.disabled = true;
     startBtn.innerHTML = "<i class='bx bx-loader-alt animate-spin'></i> Initializing...";
 
@@ -2354,7 +2346,7 @@ async function startLivenessCheck() {
       const taskEl = document.getElementById(`task-${task.id}`);
       taskEl.classList.remove('opacity-50');
       taskEl.classList.add('ring-2', 'ring-brand', 'bg-brand/5');
-      
+
       instructionText.innerText = task.text;
       instructionText.parentElement.classList.add('animate-bounce');
 
@@ -2365,7 +2357,7 @@ async function startLivenessCheck() {
       canvas.width = video.videoWidth;
       canvas.height = video.videoHeight;
       const ctx = canvas.getContext('2d');
-      
+
       const frames = [];
       const captureCount = task.id === 'blink' ? 3 : 1;
       const captureInterval = 500; // 500ms between frames for blink
@@ -2380,40 +2372,29 @@ async function startLivenessCheck() {
 
       // Verify with AI
       taskEl.querySelector('.status-text').innerText = "Verifying...";
-      
-      try {
-        const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-        const imageParts = frames.map(data => ({ inlineData: { data, mimeType: 'image/jpeg' } }));
-        
-        const response = await ai.models.generateContent({
-          model: "gemini-3-flash-preview",
-          contents: {
-            parts: [
-              ...imageParts,
-              { text: `Analyze these images for a KYC liveness check. 
-                       The user was specifically asked to: ${task.text}.
-                       
-                       Verification Criteria:
-                       1. Is there a real, live human face in the images? (Anti-robot/Anti-spoofing)
-                       2. ${task.prompt}
-                       3. Is the image quality sufficient to see the eyes and face clearly? (Be lenient with minor graininess if the action is visible).
-                       
-                       Respond ONLY with a JSON object: {"passed": boolean, "reason": "string"}` }
-            ]
-          },
-          config: { responseMimeType: "application/json" }
-        });
 
-        const result = JSON.parse(response.text);
-        
-        if (result.passed) {
+      try {
+        const imageParts = frames.map(data => ({ inlineData: { data, mimeType: 'image/jpeg' } }));
+        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
+        const prompt = `Analyze these images for a KYC liveness check. The user was asked to: ${task.text}.
+                        Criteria:
+                        1. Is there a real, live human face?
+                        2. ${task.prompt}
+                        Respond ONLY with a JSON object: {"passed": boolean, "reason": "string"}`;
+
+        const result = await model.generateContent([...imageParts, prompt]);
+        const resultText = result.response.text();
+        const parsedResult = JSON.parse(resultText);
+
+        if (parsedResult.passed) {
           taskEl.classList.remove('ring-brand', 'bg-brand/5');
           taskEl.classList.add('bg-emerald-50', 'border-emerald-200');
           taskEl.querySelector('.status-text').innerText = "Verified";
           taskEl.querySelector('.status-text').classList.replace('text-neutral-400', 'text-emerald-600');
           taskEl.querySelector('.status-icon').innerHTML = "<i class='bx bxs-check-circle text-emerald-500 text-xl'></i>";
         } else {
-          throw new Error(result.reason || "Verification failed");
+          throw new Error(parsedResult.reason || "Verification failed");
         }
       } catch (err) {
         console.error('AI Verification Error:', err);
@@ -2430,10 +2411,10 @@ async function startLivenessCheck() {
     // Success
     instructionText.innerText = "Verification Complete!";
     instructionText.parentElement.classList.add('bg-emerald-500');
-    
+
     await new Promise(resolve => setTimeout(resolve, 2000));
     stream.getTracks().forEach(t => t.stop());
-    
+
     userProfile.kycStep = 3;
     renderSection('kyc');
 
@@ -2491,7 +2472,7 @@ function initChatbot() {
   window.loadChatHistoryItem = (index) => {
     const item = chatHistory[index];
     if (!item) return;
-    
+
     // Clear current messages and show the history one
     chatMessages.innerHTML = '';
     addMessage(item.query, false);
@@ -2529,10 +2510,10 @@ function initChatbot() {
   const addMessage = (text, isAi = false) => {
     const div = document.createElement('div');
     div.className = `flex gap-3 ${isAi ? '' : 'flex-row-reverse animate-in slide-in-from-right-2'}`;
-    
+
     // Clean text: Remove asterisks (often used for bolding in AI responses)
     const cleanText = text.replace(/\*\*/g, '').replace(/\*/g, '').replace(/\n/g, '<br>');
-    
+
     div.innerHTML = `
       <div class="w-8 h-8 rounded-lg ${isAi ? 'bg-brand/10 text-brand' : 'bg-neutral-900 text-white'} flex items-center justify-center shrink-0 shadow-sm">
         <i class='bx ${isAi ? 'bx-bot' : 'bx-user'}'></i>
@@ -2564,9 +2545,8 @@ function initChatbot() {
     chatMessages.scrollTop = chatMessages.scrollHeight;
 
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-      const model = "gemini-3.1-pro-preview";
-      
+      const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro" });
+
       const systemInstruction = `
         You are the SMAJ AI Assistant, a helpful and knowledgeable guide for the SMAJ Ecosystem Dashboard.
         Your goal is to explain everything about the user's transactions, orders, and activities across the 13 integrated platforms.
@@ -2614,18 +2594,17 @@ function initChatbot() {
         - Mention that you save their chat history so they can always refer back to previous searches and explanations.
       `;
 
-      const response = await ai.models.generateContent({
-        model: model,
-        contents: message,
-        config: {
-          systemInstruction: systemInstruction
-        }
+      const chat = model.startChat({
+        history: [],
+        systemInstruction: systemInstruction,
       });
+
+      const result = await chat.sendMessage(message);
+      const aiResponseText = result.response.text();
 
       const loadingElement = document.getElementById(loadingId);
       if (loadingElement) loadingElement.remove();
-      
-      const aiResponseText = response.text;
+
       addMessage(aiResponseText, true);
 
       // Save to History

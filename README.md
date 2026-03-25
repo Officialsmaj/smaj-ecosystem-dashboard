@@ -32,10 +32,11 @@ A dynamic, AI-powered worldwide dashboard for the SMAJ Ecosystem. This platform 
 
 ## Deployment
 
-1. **GitHub Secrets**: Go to your repo **Settings > Secrets and variables > Actions** and add a New Repository Secret:
+1. **Setup File Structure**: Ensure your `deploy.yml` is moved to `.github/workflows/deploy.yml` in your repository.
+2. **GitHub Secrets**: Go to your repo **Settings > Secrets and variables > Actions** and add a New Repository Secret:
    - Name: `GEMINI_API_KEY`
    - Value: `YOUR_ACTUAL_GOOGLE_AI_STUDIO_KEY`
-2. **Enable Actions**: Go to **Settings > Pages** and set "Source" to **GitHub Actions**.
+3. **Enable Actions**: Go to **Settings > Pages** and set "Source" to **GitHub Actions**.
 3. **Push**: Pushing to the `main` branch will now trigger the `deploy.yml` workflow automatically.
 
 **Note:** The app requires Camera access for the AI KYC feature. Ensure you grant permission when prompted by the browser.
