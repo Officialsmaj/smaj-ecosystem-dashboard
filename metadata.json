@@ -1,0 +1,5 @@
+{
+  "name": "SMAJ Ecosystem Dashboard",
+  "description": "A dynamic, worldwide dashboard for the SMAJ Ecosystem, integrating 13 platforms including Store, Jobs, Health, and Finance with blockchain-powered features.",
+  "requestFramePermissions": ["camera"]
+}

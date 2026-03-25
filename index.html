@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SMAJ Ecosystem Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.css">
+  <link rel="stylesheet" href="/src/index.css">
+</head>
+<body class="bg-neutral-50 text-neutral-900 font-sans">
+  <div id="app" class="flex min-h-screen">
+    <!-- Sidebar -->
+    <aside id="sidebar" class="fixed inset-y-0 left-0 z-50 w-72 bg-white border-r border-neutral-200/60 transform transition-transform duration-300 ease-in-out lg:relative lg:translate-x-0 flex flex-col shadow-xl lg:shadow-none -translate-x-full lg:translate-x-0">
+      <div class="p-6 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 bg-brand rounded-xl flex items-center justify-center shadow-lg shadow-brand/20">
+            <i class='bx bx-planet text-white text-2xl'></i>
+          </div>
+          <div>
+            <h1 class="font-bold text-lg leading-tight">SMAJ PI HUB</h1>
+            <p class="text-xs text-neutral-500 font-medium uppercase tracking-wider">Control Center</p>
+          </div>
+        </div>
+        <button id="sidebar-close" class="lg:hidden p-2 hover:bg-neutral-100 rounded-lg">
+          <i class='bx bx-x text-xl'></i>
+        </button>
+      </div>
+
+      <!-- Profile Mini -->
+      <div class="mx-4 p-4 rounded-2xl border border-neutral-100 bg-neutral-50 flex items-center gap-4 mb-6">
+        <div class="w-12 h-12 bg-brand/10 text-brand rounded-full flex items-center justify-center font-bold text-lg border-2 border-brand/20">
+          SP
+        </div>
+        <div class="flex-1 min-w-0">
+          <h3 class="font-semibold truncate">SMAJ Pioneer</h3>
+          <p class="text-xs text-neutral-500">@smaj_user</p>
+        </div>
+        <div id="wallet-status-dot" class="w-2 h-2 rounded-full bg-brand animate-pulse"></div>
+      </div>
+
+      <!-- Navigation -->
+      <nav id="nav-menu" class="flex-1 overflow-y-auto px-4 space-y-1">
+        <button data-section="overview" class="nav-btn active w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all group bg-brand text-white shadow-lg shadow-brand/20">
+          <i class='bx bx-grid-alt text-xl'></i>
+          Dashboard Overview
+        </button>
+        <button data-section="profile" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all group text-neutral-500 hover:bg-neutral-100 hover:text-neutral-900">
+          <i class='bx bx-user text-xl'></i>
+          My Profile
+        </button>
+        <button data-section="kyc" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all group text-neutral-500 hover:bg-neutral-100 hover:text-neutral-900">
+          <i class='bx bx-badge-check text-xl'></i>
+          KYC Verification
+        </button>
+        <button data-section="finance" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all group text-neutral-500 hover:bg-neutral-100 hover:text-neutral-900">
+          <i class='bx bx-wallet-alt text-xl'></i>
+          Wallet & Finance
+        </button>
+        <button data-section="ecosystem" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all group text-neutral-500 hover:bg-neutral-100 hover:text-neutral-900">
+          <i class='bx bx-planet text-xl'></i>
+          Ecosystem Apps
+        </button>
+        <button data-section="orders" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all group text-neutral-500 hover:bg-neutral-100 hover:text-neutral-900">
+          <i class='bx bx-package text-xl'></i>
+          Orders & Bookings
+        </button>
+        <button data-section="jobs" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all group text-neutral-500 hover:bg-neutral-100 hover:text-neutral-900">
+          <i class='bx bx-briefcase-alt-2 text-xl'></i>
+          Jobs & Services
+        </button>
+        <button data-section="notifications" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all group text-neutral-500 hover:bg-neutral-100 hover:text-neutral-900">
+          <i class='bx bx-bell text-xl'></i>
+          Notifications
+        </button>
+        <button data-section="analytics" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all group text-neutral-500 hover:bg-neutral-100 hover:text-neutral-900">
+          <i class='bx bx-line-chart text-xl'></i>
+          Analytics
+        </button>
+        <button data-section="admin" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all group text-neutral-500 hover:bg-neutral-100 hover:text-neutral-900">
+          <i class='bx bx-shield-alt-2 text-xl'></i>
+          Admin Panel
+        </button>
+        <button data-section="security" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all group text-neutral-500 hover:bg-neutral-100 hover:text-neutral-900">
+          <i class='bx bx-shield-quarter text-xl'></i>
+          Security & Settings
+        </button>
+      </nav>
+
+      <!-- Footer Actions -->
+      <div class="p-4 border-t border-neutral-100 mt-auto">
+        <button id="wallet-toggle" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all text-rose-500 hover:bg-rose-50">
+          <i class='bx bx-log-out-circle text-xl'></i>
+          <span id="wallet-toggle-text">Disconnect Wallet</span>
+        </button>
+      </div>
+    </aside>
+
+    <!-- Sidebar Overlay -->
+    <div id="sidebar-overlay" class="fixed inset-0 bg-black/50 z-40 backdrop-blur-sm hidden"></div>
+
+    <!-- Main Content -->
+    <main class="flex-1 flex flex-col min-w-0 overflow-hidden">
+      <!-- Header -->
+      <header class="h-20 border-b border-neutral-200/60 bg-white/80 backdrop-blur-md px-6 flex items-center justify-between sticky top-0 z-30">
+        <div class="flex items-center gap-4">
+          <button id="sidebar-open" class="p-2 hover:bg-neutral-100 rounded-xl lg:hidden">
+            <i class='bx bx-menu text-2xl'></i>
+          </button>
+          <div>
+            <h2 class="font-bold text-xl">Welcome back, Pioneer</h2>
+            <p class="text-sm text-neutral-500">Profile Dashboard Control Center</p>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-3">
+          <button id="theme-toggle" class="p-2.5 hover:bg-neutral-100 rounded-xl transition-colors">
+            <i class='bx bx-moon text-xl'></i>
+          </button>
+          <div class="h-8 w-px bg-neutral-200 mx-2"></div>
+          <a href="/" class="flex items-center gap-2 px-4 py-2 hover:bg-neutral-100 rounded-xl font-medium transition-colors">
+            <i class='bx bx-home-alt-2 text-xl'></i>
+            <span class="hidden sm:inline">Back to Site</span>
+          </a>
+        </div>
+      </header>
+
+      <!-- Content Area -->
+      <div id="content-area" class="flex-1 overflow-y-auto p-6 md:p-8">
+        <!-- Sections will be injected here -->
+      </div>
+    </main>
+
+    <!-- AI Chatbot -->
+    <div id="ai-chatbot" class="fixed bottom-6 right-6 z-[60] flex flex-col items-end gap-4">
+      <!-- Chat Window -->
+      <div id="chat-window" class="hidden w-[350px] sm:w-[400px] h-[500px] bg-white rounded-3xl shadow-2xl border border-neutral-200/60 flex flex-col overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-300">
+        <!-- Chat Header -->
+        <div class="p-4 bg-brand text-white flex items-center justify-between shadow-lg shadow-brand/20">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
+              <i class='bx bx-bot text-2xl'></i>
+            </div>
+            <div>
+              <h3 class="font-bold text-sm">SMAJ AI Assistant</h3>
+              <p class="text-[10px] text-white/70 uppercase tracking-widest font-bold">Powered by Gemini</p>
+            </div>
+          </div>
+          <div class="flex items-center gap-1">
+            <button id="toggle-history" class="p-2 hover:bg-white/10 rounded-lg transition-colors" title="Chat History">
+              <i class='bx bx-history text-xl'></i>
+            </button>
+            <button id="close-chat" class="p-2 hover:bg-white/10 rounded-lg transition-colors">
+              <i class='bx bx-x text-xl'></i>
+            </button>
+          </div>
+        </div>
+        
+        <!-- History Panel (Hidden by default) -->
+        <div id="history-panel" class="hidden absolute inset-0 top-[72px] bg-white z-10 flex flex-col animate-in slide-in-from-right duration-300">
+          <div class="p-4 border-b border-neutral-100 flex items-center justify-between bg-neutral-50">
+            <h4 class="font-bold text-xs uppercase tracking-widest text-neutral-500">Chat History</h4>
+            <button id="clear-history" class="text-[10px] font-bold text-rose-500 hover:text-rose-600 uppercase tracking-tighter">Clear All</button>
+          </div>
+          <div id="history-list" class="flex-1 overflow-y-auto p-4 space-y-2">
+            <!-- History items will be injected here -->
+            <p class="text-center text-xs text-neutral-400 py-8">No history yet.</p>
+          </div>
+        </div>
+        
+        <!-- Chat Messages -->
+        <div id="chat-messages" class="flex-1 overflow-y-auto p-4 space-y-4 bg-neutral-50/50">
+          <div class="flex gap-3">
+            <div class="w-8 h-8 rounded-lg bg-brand/10 text-brand flex items-center justify-center shrink-0">
+              <i class='bx bx-bot'></i>
+            </div>
+            <div class="bg-white p-3 rounded-2xl rounded-tl-none border border-neutral-200/60 shadow-sm text-sm">
+              Hello Pioneer! I'm your SMAJ AI Assistant. I can help you understand your transactions, orders, and activities across all 13 integrated platforms. How can I help you today?
+            </div>
+          </div>
+        </div>
+        
+        <!-- Chat Input -->
+        <div class="p-4 bg-white border-t border-neutral-100">
+          <form id="chat-form" class="flex items-center gap-2">
+            <input type="text" id="chat-input" autocomplete="off" placeholder="Ask anything about your ecosystem..." class="flex-1 bg-neutral-50 border border-neutral-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-brand outline-none transition-all">
+            <button type="submit" class="w-10 h-10 bg-brand text-white rounded-xl flex items-center justify-center shadow-lg shadow-brand/20 hover:scale-105 transition-transform">
+              <i class='bx bx-send text-xl'></i>
+            </button>
+          </form>
+        </div>
+      </div>
+      
+      <!-- Toggle Button -->
+      <button id="toggle-chat" class="w-14 h-14 bg-brand text-white rounded-2xl flex items-center justify-center shadow-2xl shadow-brand/40 hover:scale-110 transition-all group relative">
+        <i class='bx bx-bot text-3xl group-hover:animate-bounce'></i>
+        <span class="absolute -top-1 -right-1 w-4 h-4 bg-rose-500 border-2 border-white rounded-full"></span>
+      </button>
+    </div>
+  </div>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
