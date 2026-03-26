@@ -2559,15 +2559,13 @@ function initChatbot() {
     chatMessages.appendChild(loadingDiv);
     chatMessages.scrollTop = chatMessages.scrollHeight;
 
-    if (!API_KEY) {
+    if (!API_KEY || API_KEY === "" || API_KEY === "undefined") {
       loadingDiv.remove();
-      addMessage("API Key is missing. Please set VITE_GEMINI_API_KEY in your .env.local file.", true);
+      addMessage("API Key is missing or invalid. Please check your .env.local file and restart the development server.", true);
       return;
     }
 
     try {
-      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-
       const systemInstruction = `
         You are the SMAJ AI Assistant, a helpful and knowledgeable guide for the SMAJ Ecosystem Dashboard.
         Your goal is to explain everything about the user's transactions, orders, and activities across the 13 integrated platforms.
@@ -2614,10 +2612,14 @@ function initChatbot() {
         - Mention that you save their chat history so they can always refer back to previous searches and explanations.
       `;
 
+      const model = genAI.getGenerativeModel({ 
+        model: "gemini-1.5-flash",
+        systemInstruction: systemInstruction
+      });
+
       if (!activeChatSession) {
         activeChatSession = model.startChat({
           history: [],
-          systemInstruction: systemInstruction,
         });
       }
 
@@ -2641,7 +2643,7 @@ function initChatbot() {
       console.error("AI Chat Error:", error);
       const loadingElement = document.getElementById(loadingId);
       if (loadingElement) loadingElement.remove();
-      addMessage("I'm sorry, I'm having trouble connecting to the network. Please try again later.", true);
+      addMessage(`Sorry, I encountered an error: ${error.message}. Please check your connection and API key.`, true);
     }
   };
 
