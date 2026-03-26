@@ -2325,6 +2325,11 @@ async function startLivenessCheck() {
 
   if (!video || !canvas || !instructionText) return;
 
+  if (!API_KEY) {
+    showToast('Gemini API Key is missing. Please configure VITE_GEMINI_API_KEY in your environment.');
+    return;
+  }
+
   try {
     let stream;
     try {
@@ -2388,8 +2393,9 @@ async function startLivenessCheck() {
         const result = await model.generateContent([...imageParts, prompt]);
         const resultText = result.response.text();
         
-        // Clean potential markdown formatting from AI JSON response
-        const cleanedJson = resultText.replace(/```json/g, '').replace(/```/g, '').trim();
+        // Robust JSON extraction: find content between first { and last }
+        const jsonMatch = resultText.match(/\{[\s\S]*\}/);
+        const cleanedJson = jsonMatch ? jsonMatch[0] : resultText;
         const parsedResult = JSON.parse(cleanedJson);
 
         if (parsedResult.passed) {
@@ -2445,6 +2451,7 @@ function initChatbot() {
   const historyList = document.getElementById('history-list');
   const clearHistoryBtn = document.getElementById('clear-history');
 
+  let activeChatSession = null;
   if (!toggleBtn || !chatWindow || !chatForm) return;
 
   // Load History from LocalStorage
@@ -2480,6 +2487,7 @@ function initChatbot() {
 
     // Clear current messages and show the history one
     chatMessages.innerHTML = '';
+    activeChatSession = null; // Reset session when loading from history
     addMessage(item.query, false);
     addMessage(item.response, true);
     historyPanel.classList.add('hidden');
@@ -2516,12 +2524,17 @@ function initChatbot() {
     const div = document.createElement('div');
     div.className = `flex gap-3 ${isAi ? '' : 'flex-row-reverse animate-in slide-in-from-right-2'}`;
 
+    // Basic Markdown support for AI responses (bolding and line breaks)
+    let formattedText = text
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\n/g, '<br>');
+
     div.innerHTML = `
       <div class="w-8 h-8 rounded-lg ${isAi ? 'bg-brand/10 text-brand' : 'bg-neutral-900 text-white'} flex items-center justify-center shrink-0 shadow-sm">
         <i class='bx ${isAi ? 'bx-bot' : 'bx-user'}'></i>
       </div>
-      <div class="bg-white p-3 rounded-2xl ${isAi ? 'rounded-tl-none' : 'rounded-tr-none'} border border-neutral-200/60 shadow-sm text-sm max-w-[80%] leading-relaxed whitespace-pre-wrap">
-        ${text}
+      <div class="bg-white p-3 rounded-2xl ${isAi ? 'rounded-tl-none' : 'rounded-tr-none'} border border-neutral-200/60 shadow-sm text-sm max-w-[80%] leading-relaxed">
+        ${formattedText}
       </div>
     `;
     chatMessages.appendChild(div);
@@ -2601,12 +2614,14 @@ function initChatbot() {
         - Mention that you save their chat history so they can always refer back to previous searches and explanations.
       `;
 
-      const chat = model.startChat({
-        history: [],
-        systemInstruction: systemInstruction,
-      });
+      if (!activeChatSession) {
+        activeChatSession = model.startChat({
+          history: [],
+          systemInstruction: systemInstruction,
+        });
+      }
 
-      const result = await chat.sendMessage(message);
+      const result = await activeChatSession.sendMessage(message);
       const aiResponseText = result.response.text();
 
       const loadingElement = document.getElementById(loadingId);
