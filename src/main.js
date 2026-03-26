@@ -6,7 +6,8 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import Cropper from 'cropperjs';
 
 // Initialize Gemini AI once
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+const API_KEY = import.meta.env?.VITE_GEMINI_API_KEY || "";
+const genAI = new GoogleGenerativeAI(API_KEY);
 
 const livenessTasks = [
   { id: 'blink', text: 'Blink your eyes', prompt: 'Examine the sequence of images. Is the person blinking (eyes closed or partially closed) in at least one of these frames? If multiple frames are provided, compare them to detect motion.' },
@@ -2511,15 +2512,12 @@ function initChatbot() {
     const div = document.createElement('div');
     div.className = `flex gap-3 ${isAi ? '' : 'flex-row-reverse animate-in slide-in-from-right-2'}`;
 
-    // Clean text: Remove asterisks (often used for bolding in AI responses)
-    const cleanText = text.replace(/\*\*/g, '').replace(/\*/g, '').replace(/\n/g, '<br>');
-
     div.innerHTML = `
       <div class="w-8 h-8 rounded-lg ${isAi ? 'bg-brand/10 text-brand' : 'bg-neutral-900 text-white'} flex items-center justify-center shrink-0 shadow-sm">
         <i class='bx ${isAi ? 'bx-bot' : 'bx-user'}'></i>
       </div>
-      <div class="bg-white p-3 rounded-2xl ${isAi ? 'rounded-tl-none' : 'rounded-tr-none'} border border-neutral-200/60 shadow-sm text-sm max-w-[80%] leading-relaxed">
-        ${cleanText}
+      <div class="bg-white p-3 rounded-2xl ${isAi ? 'rounded-tl-none' : 'rounded-tr-none'} border border-neutral-200/60 shadow-sm text-sm max-w-[80%] leading-relaxed whitespace-pre-wrap">
+        ${text}
       </div>
     `;
     chatMessages.appendChild(div);
@@ -2544,8 +2542,14 @@ function initChatbot() {
     chatMessages.appendChild(loadingDiv);
     chatMessages.scrollTop = chatMessages.scrollHeight;
 
+    if (!API_KEY) {
+      loadingDiv.remove();
+      addMessage("API Key is missing. Please set VITE_GEMINI_API_KEY in your .env.local file.", true);
+      return;
+    }
+
     try {
-      const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro" });
+      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
       const systemInstruction = `
         You are the SMAJ AI Assistant, a helpful and knowledgeable guide for the SMAJ Ecosystem Dashboard.
@@ -2584,7 +2588,6 @@ function initChatbot() {
         
         Instructions:
         - Be professional, encouraging, and clear.
-        - DO NOT use asterisks (**) for bolding. Use plain text or capitalization for emphasis.
         - Use the user's data to provide specific answers.
         - If asked about a specific platform, explain its role in the ecosystem.
         - Always refer to Pi's value in terms of GCV ($314,159) when discussing finances.
