@@ -6,7 +6,8 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import Cropper from 'cropperjs';
 
 // Initialize Gemini AI once
-const API_KEY = import.meta.env?.VITE_GEMINI_API_KEY || "";
+// Try to get the key from both the standard Vite env and the process.env injected by the bundler
+const API_KEY = import.meta.env?.VITE_GEMINI_API_KEY || (typeof process !== 'undefined' ? process.env.GEMINI_API_KEY : "");
 const genAI = new GoogleGenerativeAI(API_KEY);
 
 const livenessTasks = [
@@ -2386,7 +2387,10 @@ async function startLivenessCheck() {
 
         const result = await model.generateContent([...imageParts, prompt]);
         const resultText = result.response.text();
-        const parsedResult = JSON.parse(resultText);
+        
+        // Clean potential markdown formatting from AI JSON response
+        const cleanedJson = resultText.replace(/```json/g, '').replace(/```/g, '').trim();
+        const parsedResult = JSON.parse(cleanedJson);
 
         if (parsedResult.passed) {
           taskEl.classList.remove('ring-brand', 'bg-brand/5');
