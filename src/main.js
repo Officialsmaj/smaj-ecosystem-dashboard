@@ -110,11 +110,68 @@ function resetUserProfileToDefaults() {
   const defaults = createDefaultUserProfile();
   Object.keys(userProfile).forEach(key => delete userProfile[key]);
   Object.assign(userProfile, defaults);
+  localStorage.removeItem('smaj_user_profile');
 }
 
 // --- Global Action Handler ---
 window.handleAction = (actionName) => {
   showToast(`${actionName} action triggered successfully!`, 'success');
+};
+
+window.handleAvatarChange = () => {
+  const modal = document.createElement('div');
+  modal.className = 'fixed inset-0 z-[110] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200';
+  modal.innerHTML = `
+    <div class="bg-white rounded-3xl w-full max-w-xs overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
+      <div class="p-6 text-center space-y-4">
+        <h3 class="font-bold text-lg">Update Profile Photo</h3>
+        <div class="grid grid-cols-1 gap-3">
+          <button id="avatar-camera" class="w-full py-3 bg-neutral-100 rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-neutral-200 transition-all">
+            <i class='bx bx-camera text-xl'></i> Take Photo
+          </button>
+          <button id="avatar-upload" class="w-full py-3 bg-neutral-100 rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-neutral-200 transition-all">
+            <i class='bx bx-upload text-xl'></i> Upload File
+          </button>
+          <button id="avatar-cancel" class="w-full py-3 text-neutral-400 font-bold hover:text-neutral-600 transition-all">Cancel</button>
+        </div>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+
+  const close = () => modal.remove();
+  modal.querySelector('#avatar-cancel').onclick = close;
+  
+  modal.querySelector('#avatar-camera').onclick = () => {
+    close();
+    captureCameraImage((dataUrl) => {
+      openCropper(dataUrl, (croppedUrl) => {
+        userProfile.avatar = croppedUrl;
+        renderSection('profile');
+      });
+    });
+  };
+
+  modal.querySelector('#avatar-upload').onclick = () => {
+    close();
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.onchange = (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = (re) => {
+          openCropper(re.target.result, (croppedUrl) => {
+            userProfile.avatar = croppedUrl;
+            renderSection('profile');
+          });
+        };
+        reader.readAsDataURL(file);
+      }
+    };
+    input.click();
+  };
 };
 
 // --- Real Pi Transaction Handlers ---
@@ -1404,7 +1461,7 @@ const templates = {
               <div class="w-32 h-32 rounded-full bg-brand/10 border-4 border-white shadow-xl flex items-center justify-center text-4xl font-bold text-brand overflow-hidden">
                 ${userProfile.avatar ? `<img src="${userProfile.avatar}" class="w-full h-full object-cover">` : userProfile.name.split(' ').map(n => n[0]).join('')}
               </div>
-              <button onclick="handleAction('Change Avatar')" class="absolute bottom-0 right-0 w-10 h-10 bg-white border border-neutral-200 rounded-full flex items-center justify-center text-neutral-500 hover:text-brand shadow-lg transition-all">
+              <button onclick="handleAvatarChange()" class="absolute bottom-0 right-0 w-10 h-10 bg-white border border-neutral-200 rounded-full flex items-center justify-center text-neutral-500 hover:text-brand shadow-lg transition-all">
                 <i class='bx bx-camera text-xl'></i>
               </button>
             </div>
@@ -2009,6 +2066,9 @@ function renderSection(sectionId) {
         userProfile.email = document.getElementById('profile-email').value;
         userProfile.phone = document.getElementById('profile-phone').value;
         userProfile.address = document.getElementById('profile-address').value;
+
+        localStorage.setItem('smaj_user_profile', JSON.stringify(userProfile));
+        showToast('Profile updated successfully!', 'success');
 
         saveBtn.innerHTML = "<i class='bx bx-check'></i> Saved";
         setTimeout(() => {
@@ -2651,6 +2711,17 @@ function updateBackLink() {
 
 // Check for existing session or token on startup
 async function initSession() {
+  // Load saved profile if any
+  const savedProfile = localStorage.getItem('smaj_user_profile');
+  if (savedProfile) {
+    try {
+      const parsed = JSON.parse(savedProfile);
+      Object.assign(userProfile, parsed);
+    } catch (e) {
+      console.error('Error loading saved profile:', e);
+    }
+  }
+
   // 1. Check URL for SSO token (SSO takes priority)
   await trustTokenFromUrl();
 
