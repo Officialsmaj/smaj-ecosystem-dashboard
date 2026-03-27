@@ -315,6 +315,25 @@ function setWalletConnectionState(connected) {
   }
 }
 
+function updateHeaderInfo() {
+  const headerTitle = document.querySelector('main header h2');
+  const headerSubtitle = document.querySelector('main header p');
+  if (headerTitle) {
+    const name = userProfile.name?.trim() || 'Pioneer';
+    headerTitle.textContent = `Welcome back, ${name}`;
+  }
+  if (headerSubtitle) {
+    const parts = [];
+    if (userProfile.username) {
+      parts.push(`@${userProfile.username}`);
+    }
+    if (userProfile.bio) {
+      parts.push(userProfile.bio);
+    }
+    headerSubtitle.textContent = parts.length ? parts.join(' • ') : 'Profile Dashboard Control Center';
+  }
+}
+
 function getTokenFromQuery() {
   try {
     const url = new URL(window.location.href);
@@ -1934,6 +1953,8 @@ function renderSection(sectionId) {
 
   activeSection = sectionId;
   contentArea.innerHTML = templates[sectionId]();
+
+  updateHeaderInfo();
 
   updateBackLink(); // Update links every time a new template is injected
 
