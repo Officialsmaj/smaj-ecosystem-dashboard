@@ -64,35 +64,245 @@ let isWalletConnected = false; // Changed to false by default for a better login
 let isDarkMode = false;
 let showBalance = true;
 
-let userProfile = {
-  name: 'Unconnected Pioneer',
-  username: 'anonymous',
-  email: 'officialsmaj@gmail.com',
-  phone: '+234 800 000 0000',
-  address: 'Lagos, Nigeria',
-  bio: 'Building the future of the SMAJ Ecosystem on the Pi Network. Pioneer since 2019.',
-  avatar: null,
-  language: 'en',
-  currency: 'USD',
-  timezone: 'UTC+1',
-  visibility: 'public',
-  kycStatus: 'not_started', // 'not_started', 'pending', 'verified', 'rejected'
-  kycStep: 1, // 1: Info & Docs, 2: Liveness, 3: Review
-  kycData: {
-    fullName: '',
-    dob: '',
-    pob: '',
-    country: '',
-    docType: '',
-    front: null,
-    back: null,
-    frontMethod: 'upload', // 'upload', 'camera', 'url'
-    backMethod: 'upload',
-    liveness: [] // Captured frames for liveness
-  }
+function createDefaultUserProfile() {
+  return {
+    name: 'Unconnected Pioneer',
+    username: 'anonymous',
+    email: 'officialsmaj@gmail.com',
+    phone: '+234 800 000 0000',
+    address: 'Lagos, Nigeria',
+    bio: 'Building the future of the SMAJ Ecosystem on the Pi Network. Pioneer since 2019.',
+    avatar: null,
+    language: 'en',
+    currency: 'USD',
+    timezone: 'UTC+1',
+    visibility: 'public',
+    kycStatus: 'not_started',
+    kycStep: 1,
+    kycData: {
+      fullName: '',
+      dob: '',
+      pob: '',
+      country: '',
+      docType: '',
+      front: null,
+      back: null,
+      frontMethod: 'upload',
+      backMethod: 'upload',
+      liveness: []
+    }
+  };
+}
+
+let userProfile = createDefaultUserProfile();
+window.userProfile = userProfile;
+
+function resetUserProfileToDefaults() {
+  const defaults = createDefaultUserProfile();
+  Object.keys(userProfile).forEach(key => delete userProfile[key]);
+  Object.assign(userProfile, defaults);
+}
+
+// --- Global Action Handler ---
+window.handleAction = (actionName) => {
+  showToast(`${actionName} action triggered successfully!`, 'success');
 };
 
-window.userProfile = userProfile;
+const PUBLIC_KEY_ENDPOINT = '/api/public-key';
+const JWT_ALGORITHM_CONFIG = {
+  RS256: { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' },
+  RS384: { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-384' },
+  RS512: { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-512' }
+};
+const PROFILE_FIELD_OVERRIDES = {
+  name: 'name',
+  fullName: 'name',
+  displayName: 'name',
+  username: 'username',
+  email: 'email',
+  phone: 'phone',
+  phoneNumber: 'phone',
+  address: 'address',
+  location: 'address',
+  bio: 'bio',
+  about: 'bio',
+  avatar: 'avatar',
+  avatarUrl: 'avatar',
+  language: 'language',
+  currency: 'currency',
+  timezone: 'timezone',
+  visibility: 'visibility'
+};
+
+let cachedPublicKeyPem = null;
+const importedCryptoKeys = {};
+const sessionState = { trusted: false, payload: null, token: null };
+const textEncoder = new TextEncoder();
+
+function getSubtleCrypto() {
+  const subtle = globalThis.crypto?.subtle;
+  if (!subtle) throw new Error('SubtleCrypto is not available in this browser.');
+  return subtle;
+}
+
+function base64UrlToBase64(value) {
+  const padding = '='.repeat((4 - (value.length % 4)) % 4);
+  return (value.replace(/-/g, '+').replace(/_/g, '/') + padding);
+}
+
+function base64UrlDecodeSegment(segment) {
+  const base64 = base64UrlToBase64(segment);
+  return globalThis.atob(base64);
+}
+
+function base64UrlToUint8Array(segment) {
+  const binary = base64UrlDecodeSegment(segment);
+  const buffer = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i += 1) {
+    buffer[i] = binary.charCodeAt(i);
+  }
+  return buffer;
+}
+
+function pemToArrayBuffer(pem) {
+  const cleaned = pem
+    .replace(/-----BEGIN PUBLIC KEY-----/g, '')
+    .replace(/-----END PUBLIC KEY-----/g, '')
+    .replace(/\s+/g, '');
+  const binary = globalThis.atob(cleaned);
+  const buffer = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i += 1) {
+    buffer[i] = binary.charCodeAt(i);
+  }
+  return buffer.buffer;
+}
+
+async function fetchPublicKeyPem() {
+  if (cachedPublicKeyPem) return cachedPublicKeyPem;
+  const response = await fetch(PUBLIC_KEY_ENDPOINT, { headers: { Accept: 'application/json' } });
+  if (!response.ok) {
+    throw new Error(`Public key request failed with ${response.status}`);
+  }
+  const rawText = await response.text();
+  let parsed;
+  try {
+    parsed = JSON.parse(rawText);
+  } catch {
+    parsed = rawText;
+  }
+  const candidate = typeof parsed === 'string'
+    ? parsed
+    : parsed?.publicKey || parsed?.key || parsed?.pem;
+  if (!candidate || typeof candidate !== 'string') {
+    throw new Error('Public key response did not contain PEM data');
+  }
+  cachedPublicKeyPem = candidate.trim();
+  return cachedPublicKeyPem;
+}
+
+async function getCryptoKeyForAlg(alg) {
+  if (importedCryptoKeys[alg]) return importedCryptoKeys[alg];
+  const config = JWT_ALGORITHM_CONFIG[alg];
+  if (!config) throw new Error(`Unsupported JWT algorithm ${alg}`);
+  const pem = await fetchPublicKeyPem();
+  const subtle = getSubtleCrypto();
+  const key = await subtle.importKey(
+    'spki',
+    pemToArrayBuffer(pem),
+    { name: config.name, hash: { name: config.hash } },
+    false,
+    ['verify']
+  );
+  importedCryptoKeys[alg] = key;
+  return key;
+}
+
+function getTokenFromQuery() {
+  try {
+    const url = new URL(window.location.href);
+    return url.searchParams.get('token');
+  } catch (err) {
+    console.warn('Unable to parse URL for token:', err);
+    return null;
+  }
+}
+
+function removeTokenFromUrl() {
+  try {
+    const url = new URL(window.location.href);
+    if (!url.searchParams.has('token')) return;
+    url.searchParams.delete('token');
+    window.history.replaceState({}, '', `${url.pathname}${url.search}${url.hash}`);
+  } catch (err) {
+    console.warn('Unable to remove token from URL:', err);
+  }
+}
+
+async function verifyJwtToken(token) {
+  if (!token) throw new Error('Token is empty');
+  const parts = token.split('.');
+  if (parts.length !== 3) throw new Error('Token format is invalid');
+  const header = JSON.parse(base64UrlDecodeSegment(parts[0]));
+  const payload = JSON.parse(base64UrlDecodeSegment(parts[1]));
+  const alg = header?.alg || 'RS256';
+  const cryptoKey = await getCryptoKeyForAlg(alg);
+  const data = textEncoder.encode(`${parts[0]}.${parts[1]}`);
+  const signature = base64UrlToUint8Array(parts[2]);
+  const subtle = getSubtleCrypto();
+  const config = JWT_ALGORITHM_CONFIG[alg];
+  const verified = await subtle.verify(
+    { name: config.name, hash: { name: config.hash } },
+    cryptoKey,
+    signature,
+    data
+  );
+  if (!verified) throw new Error('Token signature failed to verify');
+  return { header, payload };
+}
+
+function applySessionPayload(payload, token) {
+  sessionState.trusted = true;
+  sessionState.payload = payload;
+  sessionState.token = token;
+  window.trustedSession = sessionState;
+
+  Object.entries(PROFILE_FIELD_OVERRIDES).forEach(([source, target]) => {
+    if (payload?.[source] !== undefined && payload?.[source] !== null) {
+      userProfile[target] = payload[source];
+    }
+  });
+
+  if (payload?.kycStatus) {
+    userProfile.kycStatus = payload.kycStatus;
+  }
+  if (typeof payload?.kycStep === 'number') {
+    userProfile.kycStep = payload.kycStep;
+  }
+  if (payload?.kycData && typeof payload.kycData === 'object') {
+    userProfile.kycData = { ...userProfile.kycData, ...payload.kycData };
+  }
+
+  removeTokenFromUrl();
+  setWalletConnectionState(true);
+}
+
+async function trustTokenFromUrl() {
+  const token = getTokenFromQuery();
+  if (!token) return;
+  try {
+    const { payload } = await verifyJwtToken(token);
+    if (payload?.exp && Date.now() >= payload.exp * 1000) {
+      throw new Error('Token has expired');
+    }
+    if (payload?.nbf && Date.now() < payload.nbf * 1000) {
+      throw new Error('Token is not active yet');
+    }
+    applySessionPayload(payload, token);
+  } catch (err) {
+    console.warn('Session token verification failed:', err);
+    showToast(`Unable to trust session token: ${err.message}`);
+  }
+}
 
 let kycSubmissions = [
   { id: 'SUB-001', userId: 'user_123', name: 'John Doe', status: 'pending', date: '2026-03-20', country: 'USA' },
@@ -332,7 +542,7 @@ const templates = {
               ${stat.toggle && !showBalance ? '••••••' : stat.value}
             </p>
             ${stat.subValue ? `<p class="text-[10px] font-bold text-neutral-400 mt-1">${stat.toggle && !showBalance ? '••••••' : stat.subValue}</p>` : ''}
-            <button class="mt-4 text-xs font-bold text-brand flex items-center gap-1 group-hover:gap-2 transition-all">
+            <button onclick="handleAction('View ${stat.label}')" class="mt-4 text-xs font-bold text-brand flex items-center gap-1 group-hover:gap-2 transition-all">
               View Details <i class='bx bx-chevron-right'></i>
             </button>
           </div>
@@ -380,7 +590,7 @@ const templates = {
               </div>
             `).join('')}
           </div>
-          <button class="w-full mt-8 py-3 rounded-xl bg-neutral-50 font-bold text-xs text-neutral-600 hover:bg-neutral-100 transition-all uppercase tracking-widest">
+          <button onclick="handleAction('Open Ledger')" class="w-full mt-8 py-3 rounded-xl bg-neutral-50 font-bold text-xs text-neutral-600 hover:bg-neutral-100 transition-all uppercase tracking-widest">
             Open Ledger
           </button>
         </div>
@@ -388,50 +598,6 @@ const templates = {
     </div>
     `;
   },
-  profile: () => `
-    <div class="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <h2 class="text-2xl font-bold">My Profile</h2>
-      <div class="p-8 rounded-3xl border border-neutral-200/60 bg-white shadow-sm">
-        <div class="flex flex-col md:flex-row items-center gap-8 mb-10">
-          <div class="relative group">
-            <div class="w-32 h-32 bg-brand/10 text-brand rounded-full flex items-center justify-center font-bold text-4xl border-4 border-brand/20">
-              SP
-            </div>
-            <button class="absolute bottom-0 right-0 p-2.5 bg-brand text-white rounded-full shadow-lg hover:scale-110 transition-transform">
-              <i class='bx bx-camera text-xl'></i>
-            </button>
-          </div>
-          <div class="flex-1 text-center md:text-left">
-            <h3 class="text-2xl font-bold mb-1">SMAJ Pioneer</h3>
-            <p class="text-neutral-500 mb-4">@smaj_user • Joined March 2024</p>
-            <div class="flex flex-wrap justify-center md:justify-start gap-3">
-              <button class="px-6 py-2 bg-brand text-white rounded-xl font-bold text-sm shadow-lg shadow-brand/20">Edit Profile</button>
-              <button class="px-6 py-2 bg-neutral-100 rounded-xl font-bold text-sm">Share Profile</button>
-            </div>
-          </div>
-          <div class="px-6 py-4 rounded-2xl bg-neutral-50 border border-neutral-100 text-center">
-            <p class="text-xs text-neutral-500 font-bold uppercase mb-1">Reputation Score</p>
-            <p class="text-3xl font-black text-brand">982</p>
-          </div>
-        </div>
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          ${[
-      { label: 'Full Name', value: 'SMAJ Pioneer' },
-      { label: 'Username', value: '@smaj_user' },
-      { label: 'Email', value: 'pioneer@smajpihub.com' },
-      { label: 'Phone', value: '+1 (415) 555-0199' },
-      { label: 'Country', value: 'United States' },
-      { label: 'Wallet Address', value: 'GA7H...P91X' },
-    ].map(item => `
-            <div class="space-y-1">
-              <p class="text-xs font-bold text-neutral-400 uppercase tracking-wider">${item.label}</p>
-              <p class="font-semibold text-lg">${item.value}</p>
-            </div>
-          `).join('')}
-        </div>
-      </div>
-    </div>
-  `,
   kyc: () => {
     if (userProfile.kycStatus === 'pending') {
       return `
@@ -893,10 +1059,10 @@ const templates = {
               </div>
             </div>
             <div class="flex gap-3">
-              <button class="flex-1 md:flex-none px-8 py-4 bg-brand text-white rounded-2xl font-bold shadow-lg shadow-brand/20 flex items-center justify-center gap-2 hover:scale-105 transition-transform">
+              <button onclick="handleAction('Send Pi')" class="flex-1 md:flex-none px-8 py-4 bg-brand text-white rounded-2xl font-bold shadow-lg shadow-brand/20 flex items-center justify-center gap-2 hover:scale-105 transition-transform">
                 <i class='bx bx-up-arrow-alt rotate-45 text-xl'></i> Send
               </button>
-              <button class="flex-1 md:flex-none px-8 py-4 bg-white/10 text-white rounded-2xl font-bold backdrop-blur-md flex items-center justify-center gap-2 hover:bg-white/20 transition-colors">
+              <button onclick="handleAction('Receive Pi')" class="flex-1 md:flex-none px-8 py-4 bg-white/10 text-white rounded-2xl font-bold backdrop-blur-md flex items-center justify-center gap-2 hover:bg-white/20 transition-colors">
                 <i class='bx bx-down-arrow-alt rotate-45 text-xl'></i> Receive
               </button>
             </div>
@@ -999,9 +1165,15 @@ const templates = {
               <span class="text-[10px] font-black uppercase px-2 py-1 rounded-md ${eco.status === 'Ready Now' ? 'bg-brand/10 text-brand' : 'bg-neutral-100 text-neutral-500'}">
                 ${eco.status}
               </span>
-              <button class="p-2 hover:bg-neutral-100 rounded-lg text-neutral-400 hover:text-brand transition-colors">
-                <i class='bx bx-right-top-arrow-circle text-2xl'></i>
-              </button>
+              ${eco.id === 'store' ? `
+                <button onclick="handleStoreCheckout()" class="px-3 py-1 bg-brand text-white rounded-xl text-[10px] font-bold shadow-sm hover:scale-105 transition-transform">
+                  Demo Buy
+                </button>
+            ` : `
+                <button onclick="handleAction('Open ${eco.name}')" class="p-2 hover:bg-neutral-100 rounded-lg text-neutral-400 hover:text-brand transition-colors">
+                  <i class='bx bx-right-top-arrow-circle text-2xl'></i>
+                </button>
+              `}
             </div>
           </div>
         `).join('')}
@@ -1013,7 +1185,7 @@ const templates = {
       <div class="flex items-center justify-between">
         <h2 class="text-2xl font-bold">Orders & Bookings</h2>
         <div class="flex gap-2">
-          <button class="px-4 py-2 bg-white border border-neutral-200 rounded-xl text-sm font-bold hover:bg-neutral-50 transition-colors">Export CSV</button>
+          <button onclick="handleAction('Export Orders')" class="px-4 py-2 bg-white border border-neutral-200 rounded-xl text-sm font-bold hover:bg-neutral-50 transition-colors">Export CSV</button>
         </div>
       </div>
       <div class="p-8 rounded-3xl border border-neutral-200/60 bg-white shadow-sm overflow-hidden">
@@ -1065,7 +1237,7 @@ const templates = {
           </div>
           <h3 class="text-xl font-bold mb-2">Open Jobs</h3>
           <p class="text-sm text-neutral-500 mb-6">7 active projects from SMAJ PI JOBS with milestone tracking enabled.</p>
-          <button class="w-full py-3 bg-neutral-50 rounded-xl font-bold text-xs text-neutral-600 hover:bg-neutral-100 transition-all uppercase tracking-widest">Manage Jobs</button>
+          <button onclick="handleAction('Manage Jobs')" class="w-full py-3 bg-neutral-50 rounded-xl font-bold text-xs text-neutral-600 hover:bg-neutral-100 transition-all uppercase tracking-widest">Manage Jobs</button>
         </div>
         <div class="p-8 rounded-3xl border border-neutral-200/60 bg-white shadow-sm">
           <div class="w-12 h-12 rounded-2xl bg-brand/10 text-brand flex items-center justify-center mb-6">
@@ -1073,7 +1245,7 @@ const templates = {
           </div>
           <h3 class="text-xl font-bold mb-2">Service Requests</h3>
           <p class="text-sm text-neutral-500 mb-6">4 service requests are waiting for your confirmation and funding.</p>
-          <button class="w-full py-3 bg-neutral-50 rounded-xl font-bold text-xs text-neutral-600 hover:bg-neutral-100 transition-all uppercase tracking-widest">View Requests</button>
+          <button onclick="handleAction('View Requests')" class="w-full py-3 bg-neutral-50 rounded-xl font-bold text-xs text-neutral-600 hover:bg-neutral-100 transition-all uppercase tracking-widest">View Requests</button>
         </div>
       </div>
     </div>
@@ -1084,7 +1256,7 @@ const templates = {
         <h2 class="text-2xl font-bold">Notifications Center</h2>
         <div class="flex gap-2 overflow-x-auto pb-2 md:pb-0">
           ${['All Projects', 'Store', 'Jobs', 'Wallet'].map((filter, i) => `
-            <button class="whitespace-nowrap px-4 py-2 rounded-xl text-xs font-bold transition-all ${i === 0 ? 'bg-brand text-white shadow-lg shadow-brand/20' : 'bg-white border border-neutral-200 text-neutral-500 hover:bg-neutral-50'}">
+            <button onclick="handleAction('Filter by ${filter}')" class="whitespace-nowrap px-4 py-2 rounded-xl text-xs font-bold transition-all ${i === 0 ? 'bg-brand text-white shadow-lg shadow-brand/20' : 'bg-white border border-neutral-200 text-neutral-500 hover:bg-neutral-50'}">
               ${filter}
             </button>
           `).join('')}
@@ -1107,7 +1279,7 @@ const templates = {
                 <span class="text-[10px] text-neutral-400 font-medium">${notice.time}</span>
               </div>
               <p class="text-xs text-neutral-500 mb-4">${notice.desc}</p>
-              <button class="text-[10px] font-black uppercase tracking-widest text-brand hover:text-brand-dark transition-colors">Mark as Read</button>
+              <button onclick="handleAction('Mark as Read')" class="text-[10px] font-black uppercase tracking-widest text-brand hover:text-brand-dark transition-colors">Mark as Read</button>
             </div>
           </div>
         `).join('')}
@@ -1152,7 +1324,7 @@ const templates = {
               <div class="w-32 h-32 rounded-full bg-brand/10 border-4 border-white shadow-xl flex items-center justify-center text-4xl font-bold text-brand overflow-hidden">
                 ${userProfile.avatar ? `<img src="${userProfile.avatar}" class="w-full h-full object-cover">` : userProfile.name.split(' ').map(n => n[0]).join('')}
               </div>
-              <button class="absolute bottom-0 right-0 w-10 h-10 bg-white border border-neutral-200 rounded-full flex items-center justify-center text-neutral-500 hover:text-brand shadow-lg transition-all">
+              <button onclick="handleAction('Change Avatar')" class="absolute bottom-0 right-0 w-10 h-10 bg-white border border-neutral-200 rounded-full flex items-center justify-center text-neutral-500 hover:text-brand shadow-lg transition-all">
                 <i class='bx bx-camera text-xl'></i>
               </button>
             </div>
@@ -1297,12 +1469,12 @@ const templates = {
             </div>
 
             <div class="grid grid-cols-2 gap-4">
-              <button class="p-4 bg-neutral-50 hover:bg-neutral-100 rounded-2xl border border-neutral-100 text-left transition-all group">
+              <button onclick="handleAction('Export Data')" class="p-4 bg-neutral-50 hover:bg-neutral-100 rounded-2xl border border-neutral-100 text-left transition-all group">
                 <i class='bx bx-download text-xl text-neutral-400 group-hover:text-brand mb-2'></i>
                 <h4 class="font-bold text-xs">Export Data</h4>
                 <p class="text-[9px] text-neutral-500 uppercase font-black">GDPR Request</p>
               </button>
-              <button class="p-4 bg-neutral-50 hover:bg-neutral-100 rounded-2xl border border-neutral-100 text-left transition-all group">
+              <button onclick="handleAction('Delete Data')" class="p-4 bg-neutral-50 hover:bg-neutral-100 rounded-2xl border border-neutral-100 text-left transition-all group">
                 <i class='bx bx-trash text-xl text-neutral-400 group-hover:text-rose-500 mb-2'></i>
                 <h4 class="font-bold text-xs">Delete Data</h4>
                 <p class="text-[9px] text-neutral-500 uppercase font-black">Right to Forget</p>
@@ -1320,7 +1492,7 @@ const templates = {
           <p class="text-sm text-neutral-500 mb-8">Add an extra layer of security to your account by requiring a code from your phone.</p>
           <div class="flex items-center justify-between p-4 bg-neutral-50 rounded-2xl border border-neutral-100">
             <span class="font-bold text-sm">Status: <span class="text-rose-500">Disabled</span></span>
-            <button class="px-4 py-2 bg-brand text-white rounded-xl font-bold text-xs">Enable 2FA</button>
+            <button onclick="handleAction('Enable 2FA')" class="px-4 py-2 bg-brand text-white rounded-xl font-bold text-xs">Enable 2FA</button>
           </div>
         </div>
 
@@ -1330,7 +1502,7 @@ const templates = {
           </div>
           <h3 class="text-xl font-bold mb-2">Wallet Session</h3>
           <p class="text-sm text-neutral-500 mb-8">Your wallet signature is your identity. Reconnect if you need to refresh access.</p>
-          <button class="w-full py-4 border-2 border-neutral-100 rounded-2xl font-bold text-sm hover:bg-neutral-50 transition-colors">
+          <button onclick="handleAction('Refresh Session')" class="w-full py-4 border-2 border-neutral-100 rounded-2xl font-bold text-sm hover:bg-neutral-50 transition-colors">
             Refresh Wallet Signature
           </button>
         </div>
@@ -1346,8 +1518,8 @@ const templates = {
             <p class="text-neutral-500">Manage KYC Submissions & Ecosystem Compliance</p>
           </div>
           <div class="flex gap-3">
-            <button class="px-4 py-2 bg-white border border-neutral-200 rounded-xl text-sm font-bold hover:bg-neutral-50 transition-all">Export CSV</button>
-            <button class="px-4 py-2 bg-brand text-white rounded-xl text-sm font-bold shadow-lg shadow-brand/20 hover:scale-105 transition-all">Refresh Data</button>
+            <button onclick="handleAction('Export Admin Data')" class="px-4 py-2 bg-white border border-neutral-200 rounded-xl text-sm font-bold hover:bg-neutral-50 transition-all">Export CSV</button>
+            <button onclick="handleAction('Refresh Admin Dashboard')" class="px-4 py-2 bg-brand text-white rounded-xl text-sm font-bold shadow-lg shadow-brand/20 hover:scale-105 transition-all">Refresh Data</button>
           </div>
         </div>
 
@@ -1701,6 +1873,8 @@ function renderSection(sectionId) {
 
   activeSection = sectionId;
   contentArea.innerHTML = templates[sectionId]();
+
+  updateBackLink(); // Update links every time a new template is injected
 
   // Update sidebar profile mini
   const profileMini = document.querySelector('aside .mx-4');
@@ -2284,6 +2458,11 @@ sidebarOpen.onclick = () => toggleSidebar(true);
 sidebarClose.onclick = () => toggleSidebar(false);
 sidebarOverlay.onclick = () => toggleSidebar(false);
 
+// Initialize Pi SDK
+if (typeof Pi !== 'undefined') {
+  Pi.init({ version: "2.0", sandbox: false });
+}
+
 navMenu.onclick = (e) => {
   const btn = e.target.closest('.nav-btn');
   if (btn) {
@@ -2292,17 +2471,33 @@ navMenu.onclick = (e) => {
   }
 };
 
-walletToggle.onclick = () => {
-  isWalletConnected = !isWalletConnected;
-  
-  // Simulated Pi Network Login logic
-  if (isWalletConnected) {
-    // In a real integration, these values come from Pi.authenticate()
-    userProfile.name = "Real Pi Pioneer"; 
-    userProfile.username = "pi_network_user"; 
+walletToggle.onclick = async () => {
+  if (!isWalletConnected) {
+    if (typeof Pi === 'undefined') {
+      showToast('Pi SDK not detected. Please open this app in the Pi Browser.');
+      return;
+    }
+
+    try {
+      const scopes = ['username', 'payments', 'wallet_address'];
+      const auth = await Pi.authenticate(scopes, (payment) => {
+        console.log("Incomplete payment found:", payment);
+      });
+
+      isWalletConnected = true;
+      userProfile.name = auth.user.username; // Use the real Pi Network username
+      userProfile.username = auth.user.username;
+      showToast(`Welcome, @${auth.user.username}!`, 'success');
+    } catch (err) {
+      console.error(err);
+      showToast('Authentication failed. Please try again.');
+      return;
+    }
   } else {
+    isWalletConnected = false;
     userProfile.name = "Unconnected Pioneer";
     userProfile.username = "anonymous";
+    showToast('Wallet disconnected');
   }
 
   walletToggleText.innerText = isWalletConnected ? 'Disconnect Wallet' : 'Connect Wallet';
