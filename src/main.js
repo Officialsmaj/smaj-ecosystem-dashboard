@@ -2667,6 +2667,13 @@ async function initSession() {
   
   // Final render with correct user state
   renderSection(activeSection);
+
+  // Dismiss the global loader
+  const loader = document.getElementById('global-loader');
+  if (loader) {
+    loader.classList.add('opacity-0', 'pointer-events-none');
+    setTimeout(() => loader.remove(), 500); // Remove from DOM after fade animation
+  }
 }
 
 updateBackLink();

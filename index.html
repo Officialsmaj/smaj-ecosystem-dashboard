@@ -12,6 +12,17 @@
   <link rel="stylesheet" href="/src/index.css">
 </head>
 <body class="bg-neutral-50 text-neutral-900 font-sans">
+  <!-- Global Loader Overlay -->
+  <div id="global-loader" class="fixed inset-0 z-[100] bg-white flex flex-col items-center justify-center transition-opacity duration-500">
+    <div class="w-12 h-12 border-4 border-neutral-100 border-t-brand rounded-full animate-spin mb-4"></div>
+    <div class="flex items-center gap-3">
+      <div class="w-8 h-8 bg-brand rounded-lg flex items-center justify-center shadow-lg shadow-brand/20">
+        <i class='bx bx-planet text-white text-xl'></i>
+      </div>
+      <p class="text-xs font-bold text-neutral-400 uppercase tracking-widest">SMAJ Ecosystem Loading...</p>
+    </div>
+  </div>
+
   <div id="app" class="flex min-h-screen">
     <!-- Sidebar -->
     <aside id="sidebar" class="fixed inset-y-0 left-0 z-50 w-72 bg-white border-r border-neutral-200/60 transform transition-transform duration-300 ease-in-out lg:relative lg:translate-x-0 flex flex-col shadow-xl lg:shadow-none -translate-x-full lg:translate-x-0">
