@@ -17,13 +17,6 @@ const livenessTasks = [
 ];
 
 // --- Data ---
-const TRANSACTION_DATA = [
-  { date: '2026-02-18', type: 'income', project: 'SMAJ PI JOBS', amount: 3.14159265, status: 'Completed' },
-  { date: '2026-02-17', type: 'expense', project: 'SMAJ PI HEALTH', amount: 0.50000000, status: 'Pending' },
-  { date: '2026-02-15', type: 'income', project: 'SMAJ STORE', amount: 12.50000000, status: 'Completed' },
-  { date: '2026-02-13', type: 'expense', project: 'SMAJ PI ENERGY', amount: 1.25000000, status: 'Completed' },
-  { date: '2026-02-10', type: 'income', project: 'SMAJ PI SWAP', amount: 5.00000000, status: 'Completed' },
-];
 let TRANSACTION_DATA = [];
 
 async function fetchBackendTransactions() {
@@ -1143,7 +1136,6 @@ const templates = {
           <div class="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
             <div>
               <p class="text-neutral-400 text-sm font-medium mb-1">Total Pi Balance</p>
-              <h3 class="text-3xl sm:text-4xl md:text-5xl font-black tracking-tight">${PI_BALANCE.toFixed(8)} <span class="text-brand text-xl sm:text-2xl">Pi</span></h3>
               <h3 class="text-3xl sm:text-4xl md:text-5xl font-black tracking-tight truncate">${PI_BALANCE.toFixed(8)} <span class="text-brand text-xl sm:text-2xl">Pi</span></h3>
               <div class="mt-4 p-4 bg-white/5 rounded-2xl border border-white/10 backdrop-blur-sm">
                 <p class="text-neutral-500 text-[10px] font-bold uppercase tracking-widest mb-1">Estimated Value (GCV)</p>
@@ -1154,11 +1146,9 @@ const templates = {
               </div>
             </div>
             <div class="flex gap-3">
-              <button onclick="handleAction('Send Pi')" class="flex-1 md:flex-none px-8 py-4 bg-brand text-white rounded-2xl font-bold shadow-lg shadow-brand/20 flex items-center justify-center gap-2 hover:scale-105 transition-transform">
               <button onclick="handleSendPi()" class="flex-1 md:flex-none px-8 py-4 bg-brand text-white rounded-2xl font-bold shadow-lg shadow-brand/20 flex items-center justify-center gap-2 hover:scale-105 transition-transform">
                 <i class='bx bx-up-arrow-alt rotate-45 text-xl'></i> Send
               </button>
-              <button onclick="handleAction('Receive Pi')" class="flex-1 md:flex-none px-8 py-4 bg-white/10 text-white rounded-2xl font-bold backdrop-blur-md flex items-center justify-center gap-2 hover:bg-white/20 transition-colors">
               <button onclick="handleReceivePi()" class="flex-1 md:flex-none px-8 py-4 bg-white/10 text-white rounded-2xl font-bold backdrop-blur-md flex items-center justify-center gap-2 hover:bg-white/20 transition-colors">
                 <i class='bx bx-down-arrow-alt rotate-45 text-xl'></i> Receive
               </button>
@@ -2570,13 +2560,11 @@ walletToggle.onclick = async () => {
     try {
       const scopes = ['username', 'payments', 'wallet_address'];
       const auth = await Pi.authenticate(scopes, (payment) => {
-        console.log("Incomplete payment found:", payment);
         // Handle incomplete payments found in the Pi Browser cache
         console.log("Found incomplete payment:", payment);
       });
 
       isWalletConnected = true;
-      userProfile.name = auth.user.username; // Use the real Pi Network username
       
       // Real Pi Username logic: Map identity to profile
       userProfile.name = auth.user.username; 
@@ -2590,7 +2578,6 @@ walletToggle.onclick = async () => {
       // Load real transactions after login
       TRANSACTION_DATA = await fetchBackendTransactions();
     } catch (err) {
-      console.error(err);
       console.error('Pi Auth Error:', err);
       showToast('Authentication failed. Please try again.');
       return;
