@@ -60,13 +60,13 @@ async function fetchCountries() {
 
 // --- State ---
 let activeSection = 'overview';
-let isWalletConnected = true;
+let isWalletConnected = false; // Changed to false by default for a better login flow
 let isDarkMode = false;
 let showBalance = true;
 
 let userProfile = {
-  name: 'SMAJ Pioneer',
-  username: 'smaj_user',
+  name: 'Unconnected Pioneer',
+  username: 'anonymous',
   email: 'officialsmaj@gmail.com',
   phone: '+234 800 000 0000',
   address: 'Lagos, Nigeria',
@@ -2294,12 +2294,22 @@ navMenu.onclick = (e) => {
 
 walletToggle.onclick = () => {
   isWalletConnected = !isWalletConnected;
+  
+  // Simulated Pi Network Login logic
+  if (isWalletConnected) {
+    // In a real integration, these values come from Pi.authenticate()
+    userProfile.name = "Real Pi Pioneer"; 
+    userProfile.username = "pi_network_user"; 
+  } else {
+    userProfile.name = "Unconnected Pioneer";
+    userProfile.username = "anonymous";
+  }
+
   walletToggleText.innerText = isWalletConnected ? 'Disconnect Wallet' : 'Connect Wallet';
   walletToggle.classList.toggle('text-rose-500', isWalletConnected);
   walletToggle.classList.toggle('text-brand', !isWalletConnected);
-  walletStatusDot.classList.toggle('bg-brand', isWalletConnected);
-  walletStatusDot.classList.toggle('bg-neutral-300', !isWalletConnected);
-  walletStatusDot.classList.toggle('animate-pulse', isWalletConnected);
+  
+  renderSection(activeSection); // Refresh UI to show new username
 };
 
 themeToggle.onclick = () => {
@@ -2309,6 +2319,18 @@ themeToggle.onclick = () => {
 };
 
 // --- Initialization ---
+// Update "Back to Site" link to "Back to Home"
+function updateBackLink() {
+  const backLinks = document.querySelectorAll('a');
+  backLinks.forEach(link => {
+    if (link.textContent.toLowerCase().includes('back to site')) {
+      link.textContent = 'Back to Home';
+      link.href = 'https://officialsmaj.github.io/smajpihub/';
+    }
+  });
+}
+
+updateBackLink();
 renderSection('overview');
 
 // Handle responsive sidebar on load
