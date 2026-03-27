@@ -304,10 +304,22 @@ async function getCryptoKeyForAlg(alg) {
   return key;
 }
 
+function setWalletConnectionState(connected) {
+  isWalletConnected = connected;
+  if (walletToggleText) {
+    walletToggleText.innerText = isWalletConnected ? 'Disconnect Wallet' : 'Connect Wallet';
+  }
+  if (walletToggle) {
+    walletToggle.classList.toggle('text-rose-500', isWalletConnected);
+    walletToggle.classList.toggle('text-brand', !isWalletConnected);
+  }
+}
+
 function getTokenFromQuery() {
   try {
     const url = new URL(window.location.href);
-    return url.searchParams.get('token');
+    const token = url.searchParams.get('token');
+    return token;
   } catch (err) {
     console.warn('Unable to parse URL for token:', err);
     return null;
@@ -371,6 +383,7 @@ function applySessionPayload(payload, token) {
 
   removeTokenFromUrl();
   setWalletConnectionState(true);
+  renderSection(activeSection);
 }
 
 async function trustTokenFromUrl() {
@@ -2537,6 +2550,8 @@ sidebarOpen.onclick = () => toggleSidebar(true);
 sidebarClose.onclick = () => toggleSidebar(false);
 sidebarOverlay.onclick = () => toggleSidebar(false);
 
+const PI_NETWORK_HOME = 'https://officialsmaj.github.io/smajpihub/';
+
 // Initialize Pi SDK
 if (typeof Pi !== 'undefined') {
   Pi.init({ version: "2.0", sandbox: false });
@@ -2567,34 +2582,32 @@ walletToggle.onclick = async () => {
       isWalletConnected = true;
       
       // Real Pi Username logic: Map identity to profile
-      userProfile.name = auth.user.username; 
+      userProfile.name = auth.user.username;
       userProfile.username = auth.user.username;
       
       // Persistence: Store in localStorage for session consistency
       localStorage.setItem('pi_user', JSON.stringify(auth.user));
       
       showToast(`Welcome, @${auth.user.username}!`, 'success');
+      setWalletConnectionState(true);
       
       // Load real transactions after login
       TRANSACTION_DATA = await fetchBackendTransactions();
+      renderSection(activeSection);
     } catch (err) {
       console.error('Pi Auth Error:', err);
       showToast('Authentication failed. Please try again.');
       return;
     }
   } else {
-    isWalletConnected = false;
-    userProfile.name = "Unconnected Pioneer";
-    userProfile.username = "anonymous";
+    setWalletConnectionState(false);
+    resetUserProfileToDefaults();
     localStorage.removeItem('pi_user');
     showToast('Wallet disconnected');
+    
+    // Redirect back to the Hub
+    window.location.href = PI_NETWORK_HOME;
   }
-
-  walletToggleText.innerText = isWalletConnected ? 'Disconnect Wallet' : 'Connect Wallet';
-  walletToggle.classList.toggle('text-rose-500', isWalletConnected);
-  walletToggle.classList.toggle('text-brand', !isWalletConnected);
-  
-  renderSection(activeSection); // Refresh UI to show new username
 };
 
 themeToggle.onclick = () => {
@@ -2615,8 +2628,28 @@ function updateBackLink() {
   });
 }
 
+// Check for existing session or token on startup
+async function initSession() {
+  // 1. Check URL for SSO token (SSO takes priority)
+  await trustTokenFromUrl();
+
+  // 2. Fallback to localStorage if no token was found
+  if (!isWalletConnected) {
+    const savedUser = localStorage.getItem('pi_user');
+    if (savedUser) {
+      const user = JSON.parse(savedUser);
+      userProfile.name = user.username;
+      userProfile.username = user.username;
+      setWalletConnectionState(true);
+    }
+  }
+  
+  // Final render with correct user state
+  renderSection(activeSection);
+}
+
 updateBackLink();
-renderSection('overview');
+initSession();
 
 // Handle responsive sidebar on load
 if (window.innerWidth >= 1024) {
