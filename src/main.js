@@ -24,6 +24,13 @@ const TRANSACTION_DATA = [
   { date: '2026-02-13', type: 'expense', project: 'SMAJ PI ENERGY', amount: 1.25000000, status: 'Completed' },
   { date: '2026-02-10', type: 'income', project: 'SMAJ PI SWAP', amount: 5.00000000, status: 'Completed' },
 ];
+let TRANSACTION_DATA = [];
+
+async function fetchBackendTransactions() {
+  // In production, this calls your MongoDB backend: GET /api/pi/transactions
+  // For now, we initialize with a fallback or empty list
+  return TRANSACTION_DATA.length > 0 ? TRANSACTION_DATA : [];
+}
 
 const ECOSYSTEM_DATA = [
   { id: 'store', name: 'SMAJ STORE', icon: 'bx bx-shopping-bag', status: 'Ready Now', color: 'brand' },
@@ -115,6 +122,53 @@ function resetUserProfileToDefaults() {
 // --- Global Action Handler ---
 window.handleAction = (actionName) => {
   showToast(`${actionName} action triggered successfully!`, 'success');
+};
+
+// --- Real Pi Transaction Handlers ---
+window.handleSendPi = async () => {
+  if (!isWalletConnected) return showToast('Please connect your Pi Wallet');
+  
+  try {
+    const payment = await Pi.createPayment({
+      amount: 1.0, 
+      memo: "Transfer via SMAJ Ecosystem",
+      metadata: { type: "transfer" }
+    }, {
+      onReadyForServerApproval: (paymentId) => {
+        // POST to your backend: /api/pi/transactions/approve
+        showToast('Processing approval...', 'success');
+      },
+      onReadyForServerCompletion: async (paymentId, txid) => {
+        // POST to your backend: /api/pi/transactions/complete
+        showToast('Payment confirmed!', 'success');
+        // Refresh transaction list from MongoDB
+        const updated = await fetchBackendTransactions();
+        TRANSACTION_DATA = updated;
+        renderSection(activeSection);
+      },
+      onCancel: () => showToast('Payment cancelled'),
+      onError: (err) => showToast(err.message)
+    });
+  } catch (err) {
+    console.error(err);
+  }
+};
+
+window.handleReceivePi = () => {
+  const addr = "GA7H...P91X"; // Fetch actual wallet address from session
+  navigator.clipboard.writeText(addr);
+  showToast('Wallet address copied to clipboard!', 'success');
+};
+
+// --- Dashboard SSO Redirect ---
+window.handleDashboardSSO = async () => {
+  try {
+    const response = await fetch('/api/dashboard/sso-token');
+    const { token } = await response.json();
+    window.location.href = `https://officialsmaj.github.io/smajpihub/?token=${token}`;
+  } catch (err) {
+    showToast('SSO Redirect failed');
+  }
 };
 
 // --- Render Helpers ---
@@ -578,7 +632,7 @@ const templates = {
               ` : ''}
             </div>
             <h3 class="text-neutral-500 font-medium text-sm mb-1">${stat.label}</h3>
-            <p class="text-2xl font-bold tracking-tight">
+            <p class="text-xl sm:text-2xl font-bold tracking-tight truncate">
               ${stat.toggle && !showBalance ? '••••••' : stat.value}
             </p>
             ${stat.subValue ? `<p class="text-[10px] font-bold text-neutral-400 mt-1">${stat.toggle && !showBalance ? '••••••' : stat.subValue}</p>` : ''}
@@ -1089,7 +1143,8 @@ const templates = {
           <div class="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
             <div>
               <p class="text-neutral-400 text-sm font-medium mb-1">Total Pi Balance</p>
-              <h3 class="text-5xl font-black tracking-tight">${PI_BALANCE.toFixed(8)} <span class="text-brand text-2xl">Pi</span></h3>
+              <h3 class="text-3xl sm:text-4xl md:text-5xl font-black tracking-tight">${PI_BALANCE.toFixed(8)} <span class="text-brand text-xl sm:text-2xl">Pi</span></h3>
+              <h3 class="text-3xl sm:text-4xl md:text-5xl font-black tracking-tight truncate">${PI_BALANCE.toFixed(8)} <span class="text-brand text-xl sm:text-2xl">Pi</span></h3>
               <div class="mt-4 p-4 bg-white/5 rounded-2xl border border-white/10 backdrop-blur-sm">
                 <p class="text-neutral-500 text-[10px] font-bold uppercase tracking-widest mb-1">Estimated Value (GCV)</p>
                 <div class="flex items-baseline gap-2">
@@ -1100,9 +1155,11 @@ const templates = {
             </div>
             <div class="flex gap-3">
               <button onclick="handleAction('Send Pi')" class="flex-1 md:flex-none px-8 py-4 bg-brand text-white rounded-2xl font-bold shadow-lg shadow-brand/20 flex items-center justify-center gap-2 hover:scale-105 transition-transform">
+              <button onclick="handleSendPi()" class="flex-1 md:flex-none px-8 py-4 bg-brand text-white rounded-2xl font-bold shadow-lg shadow-brand/20 flex items-center justify-center gap-2 hover:scale-105 transition-transform">
                 <i class='bx bx-up-arrow-alt rotate-45 text-xl'></i> Send
               </button>
               <button onclick="handleAction('Receive Pi')" class="flex-1 md:flex-none px-8 py-4 bg-white/10 text-white rounded-2xl font-bold backdrop-blur-md flex items-center justify-center gap-2 hover:bg-white/20 transition-colors">
+              <button onclick="handleReceivePi()" class="flex-1 md:flex-none px-8 py-4 bg-white/10 text-white rounded-2xl font-bold backdrop-blur-md flex items-center justify-center gap-2 hover:bg-white/20 transition-colors">
                 <i class='bx bx-down-arrow-alt rotate-45 text-xl'></i> Receive
               </button>
             </div>
@@ -1197,7 +1254,7 @@ const templates = {
     </div>
   `,
   orders: () => `
-    <div class="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div class="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 min-w-0">
       <div class="flex items-center justify-between">
         <h2 class="text-2xl font-bold">Orders & Bookings</h2>
         <div class="flex items-center gap-3">
@@ -1381,7 +1438,7 @@ const templates = {
               </div>
               <div class="md:col-span-2 space-y-2">
                 <label class="text-xs font-bold text-neutral-400 uppercase tracking-widest">Bio / About</label>
-                <textarea id="profile-bio" rows="3" class="w-full px-4 py-3 rounded-xl bg-neutral-50 border border-neutral-100 focus:ring-2 focus:ring-brand outline-none transition-all font-medium resize-none">${userProfile.bio}</textarea>
+                <textarea id="profile-bio" rows="3" class="w-full px-4 py-3 rounded-xl bg-neutral-50 border border-neutral-100 focus:ring-2 focus:ring-brand outline-none transition-all font-medium resize-none text-sm">${userProfile.bio}</textarea>
               </div>
             </div>
           </div>
@@ -2514,14 +2571,27 @@ walletToggle.onclick = async () => {
       const scopes = ['username', 'payments', 'wallet_address'];
       const auth = await Pi.authenticate(scopes, (payment) => {
         console.log("Incomplete payment found:", payment);
+        // Handle incomplete payments found in the Pi Browser cache
+        console.log("Found incomplete payment:", payment);
       });
 
       isWalletConnected = true;
       userProfile.name = auth.user.username; // Use the real Pi Network username
+      
+      // Real Pi Username logic: Map identity to profile
+      userProfile.name = auth.user.username; 
       userProfile.username = auth.user.username;
+      
+      // Persistence: Store in localStorage for session consistency
+      localStorage.setItem('pi_user', JSON.stringify(auth.user));
+      
       showToast(`Welcome, @${auth.user.username}!`, 'success');
+      
+      // Load real transactions after login
+      TRANSACTION_DATA = await fetchBackendTransactions();
     } catch (err) {
       console.error(err);
+      console.error('Pi Auth Error:', err);
       showToast('Authentication failed. Please try again.');
       return;
     }
@@ -2529,6 +2599,7 @@ walletToggle.onclick = async () => {
     isWalletConnected = false;
     userProfile.name = "Unconnected Pioneer";
     userProfile.username = "anonymous";
+    localStorage.removeItem('pi_user');
     showToast('Wallet disconnected');
   }
 
