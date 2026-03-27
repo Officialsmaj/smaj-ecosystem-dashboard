@@ -41,6 +41,15 @@ const ECOSYSTEM_DATA = [
   { id: 'token', name: 'SMAJ TOKEN', icon: 'bx bx-coin-stack', status: 'Native', color: 'brand' },
 ];
 
+const ORDERS_DATA = [
+  { cat: 'Store Order', ref: '#ST-9201', date: '2026-02-19', amount: '0.00002546 Pi', status: 'Completed' },
+  { cat: 'Job Contract', ref: '#JB-4022', date: '2026-02-17', amount: '0.00007321 Pi', status: 'Pending' },
+  { cat: 'Event Ticket', ref: '#EV-1408', date: '2026-02-14', amount: '0.00000795 Pi', status: 'Active' },
+  { cat: 'Housing Booking', ref: '#HS-8860', date: '2026-02-12', amount: '0.00005093 Pi', status: 'Pending' },
+  { cat: 'Transport Request', ref: '#TR-3391', date: '2026-02-11', amount: '0.00000382 Pi', status: 'Completed' },
+  { cat: 'Agro Purchase', ref: '#AG-7410', date: '2026-02-10', amount: '0.00002864 Pi', status: 'Completed' },
+];
+
 let countries = [];
 
 async function fetchCountries() {
@@ -107,6 +116,37 @@ function resetUserProfileToDefaults() {
 window.handleAction = (actionName) => {
   showToast(`${actionName} action triggered successfully!`, 'success');
 };
+
+// --- Render Helpers ---
+window.renderEcoCard = (eco) => `
+  <div class="p-6 rounded-3xl border border-neutral-200/60 bg-white shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all group">
+    <div class="w-14 h-14 rounded-2xl flex items-center justify-center mb-6 transition-transform group-hover:scale-110 bg-${eco.color}-500/10 text-${eco.color}-600">
+      <i class='${eco.icon} text-3xl'></i>
+    </div>
+    <h3 class="font-bold text-lg mb-2">${eco.name}</h3>
+    <p class="text-sm text-neutral-500 mb-6 line-clamp-2">
+      Integrated ${eco.name} services powered by SMAJ PI HUB blockchain infrastructure.
+    </p>
+    <div class="flex items-center justify-between mt-auto">
+      <span class="text-[10px] font-black uppercase px-2 py-1 rounded-md ${eco.status === 'Ready Now' ? 'bg-brand/10 text-brand' : 'bg-neutral-100 text-neutral-500'}">
+        ${eco.status}
+      </span>
+      ${eco.id === 'store' ? `<button onclick="handleStoreCheckout()" class="px-3 py-1 bg-brand text-white rounded-xl text-[10px] font-bold shadow-sm hover:scale-105 transition-transform">Demo Buy</button>` : `<button onclick="handleAction('Open ${eco.name}')" class="p-2 hover:bg-neutral-100 rounded-lg text-neutral-400 hover:text-brand transition-colors"><i class='bx bx-right-top-arrow-circle text-2xl'></i></button>`}
+    </div>
+  </div>
+`;
+
+window.renderOrderRow = (order) => `
+  <tr class="group hover:bg-neutral-50/50 transition-colors">
+    <td class="py-4 text-sm font-bold">${order.cat}</td>
+    <td class="py-4 text-sm text-neutral-500 font-mono">${order.ref}</td>
+    <td class="py-4 text-sm text-neutral-500">${order.date}</td>
+    <td class="py-4 text-sm font-bold text-brand">${order.amount}</td>
+    <td class="py-4">
+      <span class="text-[10px] font-black uppercase px-2 py-1 rounded-md ${order.status === 'Completed' || order.status === 'Active' ? 'bg-brand/10 text-brand' : 'bg-amber-100 text-amber-600'}">${order.status}</span>
+    </td>
+  </tr>
+`;
 
 const PUBLIC_KEY_ENDPOINT = '/api/public-key';
 const JWT_ALGORITHM_CONFIG = {
@@ -1148,35 +1188,11 @@ const templates = {
         <h2 class="text-2xl font-bold">Ecosystem Apps</h2>
         <div class="relative">
           <i class='bx bx-search absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400'></i>
-          <input type="text" placeholder="Search platforms..." class="pl-10 pr-4 py-2 bg-white border border-neutral-200 rounded-xl text-sm focus:ring-2 focus:ring-brand outline-none w-full md:w-64">
+          <input type="text" id="eco-search" placeholder="Search platforms..." class="pl-10 pr-4 py-2 bg-white border border-neutral-200 rounded-xl text-sm focus:ring-2 focus:ring-brand outline-none w-full md:w-64">
         </div>
       </div>
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        ${ECOSYSTEM_DATA.map(eco => `
-          <div class="p-6 rounded-3xl border border-neutral-200/60 bg-white shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all group">
-            <div class="w-14 h-14 rounded-2xl flex items-center justify-center mb-6 transition-transform group-hover:scale-110 bg-${eco.color}-500/10 text-${eco.color}-600">
-              <i class='${eco.icon} text-3xl'></i>
-            </div>
-            <h3 class="font-bold text-lg mb-2">${eco.name}</h3>
-            <p class="text-sm text-neutral-500 mb-6 line-clamp-2">
-              Integrated ${eco.name} services powered by SMAJ PI HUB blockchain infrastructure.
-            </p>
-            <div class="flex items-center justify-between mt-auto">
-              <span class="text-[10px] font-black uppercase px-2 py-1 rounded-md ${eco.status === 'Ready Now' ? 'bg-brand/10 text-brand' : 'bg-neutral-100 text-neutral-500'}">
-                ${eco.status}
-              </span>
-              ${eco.id === 'store' ? `
-                <button onclick="handleStoreCheckout()" class="px-3 py-1 bg-brand text-white rounded-xl text-[10px] font-bold shadow-sm hover:scale-105 transition-transform">
-                  Demo Buy
-                </button>
-            ` : `
-                <button onclick="handleAction('Open ${eco.name}')" class="p-2 hover:bg-neutral-100 rounded-lg text-neutral-400 hover:text-brand transition-colors">
-                  <i class='bx bx-right-top-arrow-circle text-2xl'></i>
-                </button>
-              `}
-            </div>
-          </div>
-        `).join('')}
+      <div id="eco-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        ${ECOSYSTEM_DATA.map(eco => window.renderEcoCard(eco)).join('')}
       </div>
     </div>
   `,
@@ -1184,7 +1200,11 @@ const templates = {
     <div class="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div class="flex items-center justify-between">
         <h2 class="text-2xl font-bold">Orders & Bookings</h2>
-        <div class="flex gap-2">
+        <div class="flex items-center gap-3">
+          <div class="relative hidden sm:block">
+            <i class='bx bx-search absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400'></i>
+            <input type="text" id="orders-search" placeholder="Search orders..." class="pl-9 pr-4 py-2 bg-white border border-neutral-200 rounded-xl text-xs focus:ring-2 focus:ring-brand outline-none w-48 transition-all focus:w-64">
+          </div>
           <button onclick="handleAction('Export Orders')" class="px-4 py-2 bg-white border border-neutral-200 rounded-xl text-sm font-bold hover:bg-neutral-50 transition-colors">Export CSV</button>
         </div>
       </div>
@@ -1200,27 +1220,8 @@ const templates = {
                 <th class="pb-4 font-black text-[10px] uppercase tracking-widest text-neutral-400">Status</th>
               </tr>
             </thead>
-            <tbody class="divide-y divide-neutral-50">
-              ${[
-      { cat: 'Store Order', ref: '#ST-9201', date: '2026-02-19', amount: '0.00002546 Pi', status: 'Completed' },
-      { cat: 'Job Contract', ref: '#JB-4022', date: '2026-02-17', amount: '0.00007321 Pi', status: 'Pending' },
-      { cat: 'Event Ticket', ref: '#EV-1408', date: '2026-02-14', amount: '0.00000795 Pi', status: 'Active' },
-      { cat: 'Housing Booking', ref: '#HS-8860', date: '2026-02-12', amount: '0.00005093 Pi', status: 'Pending' },
-      { cat: 'Transport Request', ref: '#TR-3391', date: '2026-02-11', amount: '0.00000382 Pi', status: 'Completed' },
-      { cat: 'Agro Purchase', ref: '#AG-7410', date: '2026-02-10', amount: '0.00002864 Pi', status: 'Completed' },
-    ].map(order => `
-                <tr class="group hover:bg-neutral-50/50 transition-colors">
-                  <td class="py-4 text-sm font-bold">${order.cat}</td>
-                  <td class="py-4 text-sm text-neutral-500 font-mono">${order.ref}</td>
-                  <td class="py-4 text-sm text-neutral-500">${order.date}</td>
-                  <td class="py-4 text-sm font-bold text-brand">${order.amount}</td>
-                  <td class="py-4">
-                    <span class="text-[10px] font-black uppercase px-2 py-1 rounded-md ${order.status === 'Completed' || order.status === 'Active' ? 'bg-brand/10 text-brand' : 'bg-amber-100 text-amber-600'}">
-                      ${order.status}
-                    </span>
-                  </td>
-                </tr>
-              `).join('')}
+            <tbody id="orders-table-body" class="divide-y divide-neutral-50">
+              ${ORDERS_DATA.map(order => window.renderOrderRow(order)).join('')}
             </tbody>
           </table>
         </div>
@@ -1946,6 +1947,37 @@ function renderSection(sectionId) {
     if (currencySelect) currencySelect.onchange = (e) => userProfile.currency = e.target.value;
     if (timezoneSelect) timezoneSelect.onchange = (e) => userProfile.timezone = e.target.value;
     if (visibilitySelect) visibilitySelect.onchange = (e) => userProfile.visibility = e.target.value;
+  }
+
+  if (sectionId === 'ecosystem') {
+    const searchInput = document.getElementById('eco-search');
+    const grid = document.getElementById('eco-grid');
+    if (searchInput && grid) {
+      searchInput.oninput = (e) => {
+        const val = e.target.value.toLowerCase();
+        const filtered = ECOSYSTEM_DATA.filter(item => 
+          item.name.toLowerCase().includes(val) || 
+          item.status.toLowerCase().includes(val)
+        );
+        grid.innerHTML = filtered.map(item => window.renderEcoCard(item)).join('');
+      };
+    }
+  }
+
+  if (sectionId === 'orders') {
+    const searchInput = document.getElementById('orders-search');
+    const tableBody = document.getElementById('orders-table-body');
+    if (searchInput && tableBody) {
+      searchInput.oninput = (e) => {
+        const val = e.target.value.toLowerCase();
+        const filtered = ORDERS_DATA.filter(item => 
+          item.cat.toLowerCase().includes(val) || 
+          item.ref.toLowerCase().includes(val) || 
+          item.status.toLowerCase().includes(val)
+        );
+        tableBody.innerHTML = filtered.map(item => window.renderOrderRow(item)).join('');
+      };
+    }
   }
 
   if (sectionId === 'admin') {
