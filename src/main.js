@@ -482,7 +482,7 @@ const LANGUAGES = [
 ];
 
 const GCV_RATE_USD = 314159;
-const PI_BALANCE = 314.00000000;
+let PI_BALANCE = 314.00000000;
 
 const CURRENCIES = [
   { code: 'USD', name: 'US Dollar', symbol: '$', rate: 1 },
@@ -679,7 +679,7 @@ const templates = {
 
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
         ${[
-        { label: 'Pi Balance', value: `${PI_BALANCE.toFixed(8)} Pi`, icon: 'bx bx-coin-stack', color: 'brand', toggle: true, subValue: `≈ ${formattedValue} GCV` },
+        { label: 'Pi Balance', value: `${PI_BALANCE.toFixed(8)} Pi`, icon: 'bx bx-coin-stack', color: 'brand', toggle: true, refresh: true, subValue: `≈ ${formattedValue} GCV` },
         { label: 'Active Orders', value: '14', icon: 'bx bx-package', color: 'blue' },
         { label: 'Active Jobs', value: '7', icon: 'bx bx-briefcase', color: 'indigo' },
         { label: 'Enrolled Courses', value: '9', icon: 'bx bx-book-open', color: 'violet' },
@@ -693,11 +693,18 @@ const templates = {
               <div class="w-12 h-12 rounded-2xl flex items-center justify-center bg-${stat.color}-500/10 text-${stat.color}-600">
                 <i class='${stat.icon} text-2xl'></i>
               </div>
-              ${stat.toggle ? `
-                <button id="balance-toggle" class="p-2 hover:bg-neutral-100 rounded-lg text-neutral-400">
-                  <i class='bx ${showBalance ? 'bx-show' : 'bx-hide'} text-xl'></i>
-                </button>
-              ` : ''}
+              <div class="flex items-center gap-1">
+                ${stat.refresh ? `
+                  <button id="balance-refresh" class="p-2 hover:bg-neutral-100 rounded-lg text-neutral-400 transition-all hover:text-brand" title="Refresh Balance">
+                    <i class='bx bx-refresh text-xl'></i>
+                  </button>
+                ` : ''}
+                ${stat.toggle ? `
+                  <button id="balance-toggle" class="p-2 hover:bg-neutral-100 rounded-lg text-neutral-400">
+                    <i class='bx ${showBalance ? 'bx-show' : 'bx-hide'} text-xl'></i>
+                  </button>
+                ` : ''}
+              </div>
             </div>
             <h3 class="text-neutral-500 font-medium text-sm mb-1">${stat.label}</h3>
             <p class="text-xl sm:text-2xl font-bold tracking-tight truncate">
@@ -1653,7 +1660,9 @@ const templates = {
           </div>
           <div class="flex gap-3">
             <button onclick="handleAction('Export Admin Data')" class="px-4 py-2 bg-white border border-neutral-200 rounded-xl text-sm font-bold hover:bg-neutral-50 transition-all">Export CSV</button>
-            <button onclick="handleAction('Refresh Admin Dashboard')" class="px-4 py-2 bg-brand text-white rounded-xl text-sm font-bold shadow-lg shadow-brand/20 hover:scale-105 transition-all">Refresh Data</button>
+            <button id="admin-refresh" class="px-4 py-2 bg-brand text-white rounded-xl text-sm font-bold shadow-lg shadow-brand/20 hover:scale-105 transition-all flex items-center gap-2">
+              <i class='bx bx-refresh text-xl'></i> Refresh Data
+            </button>
           </div>
         </div>
 
