@@ -1280,7 +1280,7 @@ const templates = {
             <p class="text-xl sm:text-2xl font-bold tracking-tight truncate">
               ${stat.toggle && !showBalance ? '••••••' : stat.value}
             </p>
-            ${stat.subValue ? `<p class="text-[10px] font-bold text-neutral-400 mt-1">${stat.toggle && !showBalance ? '••••••' : stat.subValue}</p>` : ''}
+            ${stat.subValue ? `<p class="text-[10px] font-bold text-neutral-400 mt-1 truncate">${stat.toggle && !showBalance ? '••••••' : stat.subValue}</p>` : ''}
             <button onclick="handleAction('View ${stat.label}')" class="mt-4 text-xs font-bold text-brand flex items-center gap-1 group-hover:gap-2 transition-all">
               View Details <i class='bx bx-chevron-right'></i>
             </button>
@@ -1974,7 +1974,7 @@ const templates = {
             </div>
             <div>
               <p class="text-neutral-500 text-xs font-bold uppercase mb-1">Address</p>
-              <span class="font-mono text-sm opacity-60">${userProfile.walletAddress ? userProfile.walletAddress.substring(0, 6) + '...' + userProfile.walletAddress.substring(userProfile.walletAddress.length - 4) : 'Not Connected'}</span>
+              <span class="font-mono text-sm opacity-60 truncate block">${userProfile.walletAddress ? userProfile.walletAddress.substring(0, 6) + '...' + userProfile.walletAddress.substring(userProfile.walletAddress.length - 4) : 'Not Connected'}</span>
             </div>
           </div>
         </div>
@@ -2013,11 +2013,11 @@ const templates = {
                       <div class="w-8 h-8 bg-neutral-100 rounded-lg flex items-center justify-center">
                         <i class='bx bx-package text-neutral-500'></i>
                       </div>
-                      <span class="font-bold text-sm">${tx.project}</span>
+                      <span class="font-bold text-sm truncate max-w-[120px] sm:max-w-none">${tx.project}</span>
                     </div>
                   </td>
                   <td class="py-4">
-                    <span class="font-bold text-sm ${tx.type === 'income' ? 'text-brand-dark' : 'text-rose-600'}">
+                    <span class="font-bold text-sm whitespace-nowrap ${tx.type === 'income' ? 'text-brand-dark' : 'text-rose-600'}">
                       ${tx.type === 'income' ? '+' : '-'}${tx.amount.toFixed(8)} Pi
                     </span>
                   </td>
@@ -2478,7 +2478,7 @@ const templates = {
                 ${kycSubmissions.map(sub => `
                   <tr>
                     <td class="py-4"><input type="checkbox" class="admin-sub-select rounded border-neutral-300" data-id="${sub.id}"></td>
-                    <td class="py-4 text-sm font-mono text-neutral-500">${sub.id}</td>
+                    <td class="py-4 text-sm font-mono text-neutral-500 truncate max-w-[100px]">${sub.id}</td>
                     <td class="py-4">
                       <div class="flex items-center gap-3">
                         <div class="w-8 h-8 bg-neutral-100 rounded-full flex items-center justify-center font-bold text-xs">${sub.name[0]}</div>
@@ -2490,8 +2490,8 @@ const templates = {
                         <span class="text-[10px] font-black uppercase px-2 py-0.5 rounded ${sub.kycType === 'vendor' ? 'bg-orange-100 text-orange-600' : 'bg-blue-100 text-blue-600'}">
                           ${sub.kycType || 'pioneer'}
                         </span>
-                        ${sub.kycType === 'vendor' && sub.taxIdNumber ? `<p class="text-xs font-mono text-neutral-400">TIN: ${sub.taxIdNumber}</p>` : ''}
-                        ${sub.kycType === 'vendor' && sub.storeName ? `<p class="text-[10px] font-bold text-neutral-500">${sub.storeName}</p>` : ''}
+                        ${sub.kycType === 'vendor' && sub.taxIdNumber ? `<p class="text-xs font-mono text-neutral-400 truncate max-w-[120px]">TIN: ${sub.taxIdNumber}</p>` : ''}
+                        ${sub.kycType === 'vendor' && sub.storeName ? `<p class="text-[10px] font-bold text-neutral-500 truncate max-w-[120px]">${sub.storeName}</p>` : ''}
                       </div>
                     </td>
                     <td class="py-4 text-sm">${sub.country}</td>
