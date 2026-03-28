@@ -376,18 +376,13 @@ function updateHeaderInfo() {
   const headerTitle = document.querySelector('main header h2');
   const headerSubtitle = document.querySelector('main header p');
   if (headerTitle) {
-    const name = userProfile.name?.trim() || 'Pioneer';
+    const name = (userProfile.name && userProfile.name !== 'Unconnected Pioneer') 
+      ? userProfile.name 
+      : 'Pioneer';
     headerTitle.textContent = `Welcome back, ${name}`;
   }
   if (headerSubtitle) {
-    const parts = [];
-    if (userProfile.username) {
-      parts.push(`@${userProfile.username}`);
-    }
-    if (userProfile.bio) {
-      parts.push(userProfile.bio);
-    }
-    headerSubtitle.textContent = parts.length ? parts.join(' • ') : 'Profile Dashboard Control Center';
+    headerSubtitle.textContent = 'Profile Dashboard Control Center';
   }
 }
 
@@ -474,6 +469,7 @@ async function trustTokenFromUrl() {
       throw new Error('Token is not active yet');
     }
     applySessionPayload(payload, token);
+    showToast(`Successfully redirected! Welcome back, ${payload.name || payload.username || 'Pioneer'}.`, 'success');
   } catch (err) {
     console.warn('Session token verification failed:', err);
     showToast(`Unable to trust session token: ${err.message}`);
@@ -615,6 +611,10 @@ const templates = {
       currency: currentCurrency.code
     }).format(convertedValue);
 
+    const displayName = (userProfile.name && userProfile.name !== 'Unconnected Pioneer') 
+      ? userProfile.name 
+      : 'Pioneer';
+
     return `
     <div class="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <!-- Ticker -->
@@ -679,8 +679,8 @@ const templates = {
 
       <div class="flex items-center justify-between">
         <div>
-          <h2 class="text-2xl font-bold">Dashboard Overview</h2>
-          <p class="text-sm text-neutral-500">Welcome back, Pioneer. Your ecosystem is thriving.</p>
+          <h2 class="text-2xl font-bold">Welcome back, ${displayName}</h2>
+          <p class="text-sm text-neutral-500">Your SMAJ Ecosystem is synchronized and thriving.</p>
         </div>
         <div class="flex items-center gap-3 px-4 py-2 bg-brand/5 rounded-2xl border border-brand/10">
           <div class="relative flex h-3 w-3">
