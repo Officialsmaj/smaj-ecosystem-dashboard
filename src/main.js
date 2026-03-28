@@ -1732,6 +1732,12 @@ function showWelcomePopup(name) {
   if (sessionStorage.getItem('smaj_welcome_shown')) return;
   sessionStorage.setItem('smaj_welcome_shown', 'true');
 
+  const hour = new Date().getHours();
+  let greeting = 'Welcome Back';
+  if (hour >= 5 && hour < 12) greeting = 'Good Morning';
+  else if (hour >= 12 && hour < 18) greeting = 'Good Afternoon';
+  else greeting = 'Good Evening';
+
   const modal = document.createElement('div');
   modal.className = 'fixed inset-0 z-[200] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-300';
   modal.innerHTML = `
@@ -1741,7 +1747,7 @@ function showWelcomePopup(name) {
           <i class='bx bx-party text-4xl'></i>
         </div>
         <div class="space-y-2">
-          <h3 class="text-2xl font-bold">Welcome Back!</h3>
+          <h3 class="text-2xl font-bold">${greeting}!</h3>
           <p class="text-neutral-500 text-sm">Hello <b>${name}</b>, your SMAJ Ecosystem session is active and ready.</p>
         </div>
         <button id="close-welcome" class="w-full py-4 bg-brand text-white rounded-2xl font-bold shadow-lg shadow-brand/20 hover:scale-[1.02] active:scale-[0.98] transition-all">
