@@ -461,7 +461,7 @@ async function trustTokenFromUrl() {
       throw new Error('Token is not active yet');
     }
     applySessionPayload(payload, token);
-    showToast(`Welcome to your SMAJ Ecosystem Dashboard, ${payload.name || payload.username || 'Pioneer'}! Your secure session has been synchronized.`, 'success');
+    showWelcomePopup(payload.name || payload.username || 'Pioneer');
   } catch (err) {
     console.warn('Session token verification failed:', err);
     showToast(`Unable to trust session token: ${err.message}`);
@@ -1728,9 +1728,35 @@ const templates = {
 // --- Functions ---
 let currentCropper = null;
 
+function showWelcomePopup(name) {
+  if (sessionStorage.getItem('smaj_welcome_shown')) return;
+  sessionStorage.setItem('smaj_welcome_shown', 'true');
+
+  const modal = document.createElement('div');
+  modal.className = 'fixed inset-0 z-[200] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-300';
+  modal.innerHTML = `
+    <div class="bg-white rounded-3xl w-full max-w-sm overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300">
+      <div class="p-8 text-center space-y-6">
+        <div class="w-20 h-20 bg-brand/10 text-brand rounded-full flex items-center justify-center mx-auto">
+          <i class='bx bx-party text-4xl'></i>
+        </div>
+        <div class="space-y-2">
+          <h3 class="text-2xl font-bold">Welcome Back!</h3>
+          <p class="text-neutral-500 text-sm">Hello <b>${name}</b>, your SMAJ Ecosystem session is active and ready.</p>
+        </div>
+        <button id="close-welcome" class="w-full py-4 bg-brand text-white rounded-2xl font-bold shadow-lg shadow-brand/20 hover:scale-[1.02] active:scale-[0.98] transition-all">
+          Enter Dashboard
+        </button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+  modal.querySelector('#close-welcome').onclick = () => modal.remove();
+}
+
 function showToast(message, type = 'error') {
   const toast = document.createElement('div');
-  toast.className = `fixed top-6 left-1/2 -translate-x-1/2 z-[100] px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-3 animate-in slide-in-from-top-4 duration-300 ${type === 'error' ? 'bg-rose-500 text-white' : 'bg-emerald-500 text-white'
+  toast.className = `fixed top-6 left-1/2 -translate-x-1/2 z-[150] px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-3 animate-in slide-in-from-top-4 duration-300 ${type === 'error' ? 'bg-rose-500 text-white' : 'bg-emerald-500 text-white'
     }`;
 
   const icon = type === 'error' ? 'bx-error-circle' : 'bx-check-circle';
@@ -2676,6 +2702,7 @@ walletToggle.onclick = async () => {
     setWalletConnectionState(false);
     resetUserProfileToDefaults();
     localStorage.removeItem('pi_user');
+    sessionStorage.removeItem('smaj_welcome_shown');
     showToast('Wallet disconnected');
     
     // Redirect back to the Hub
@@ -2725,6 +2752,7 @@ async function initSession() {
       userProfile.name = user.username;
       userProfile.username = user.username;
       setWalletConnectionState(true);
+      showWelcomePopup(user.username);
     }
   }
   
