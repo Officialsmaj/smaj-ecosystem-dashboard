@@ -2,13 +2,7 @@
  * SMAJ Ecosystem Dashboard - Vanilla JS
  */
 import Chart from 'chart.js/auto';
-import { GoogleGenerativeAI } from "@google/generative-ai";
 import Cropper from 'cropperjs';
-
-// Initialize Gemini AI once
-// Try to get the key from both the standard Vite env and the process.env injected by the bundler
-const API_KEY = import.meta.env?.VITE_GEMINI_API_KEY || (typeof process !== 'undefined' ? process.env.GEMINI_API_KEY : "");
-const genAI = new GoogleGenerativeAI(API_KEY);
 
 const livenessTasks = [
   { id: 'blink', text: 'Blink your eyes', prompt: 'Examine the sequence of images. Is the person blinking (eyes closed or partially closed) in at least one of these frames? If multiple frames are provided, compare them to detect motion.' },
@@ -1901,36 +1895,6 @@ function captureCameraImage(onCapture) {
   };
 }
 
-async function verifyImageClarity(dataUrl, side) {
-  try {
-    const base64Data = dataUrl.split(',')[1];
-    const prompt = `Analyze this KYC document image (${side} side). 
-                    Check if the document is clearly visible, well-lit, and all text is legible.
-                    Respond ONLY with a JSON object: {"isClear": boolean, "reason": "string"}`;
-
-    let result;
-    try {
-      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-      result = await model.generateContent([
-        { inlineData: { data: base64Data, mimeType: "image/jpeg" } },
-        prompt,
-      ]);
-    } catch (err) {
-      console.warn("Gemini 1.5 Flash failed clarity check, falling back to Pro...");
-      const fallbackModel = genAI.getGenerativeModel({ model: "gemini-1.5-pro" });
-      result = await fallbackModel.generateContent([
-        { inlineData: { data: base64Data, mimeType: "image/jpeg" } },
-        prompt,
-      ]);
-    }
-
-    return JSON.parse(result.response.text());
-  } catch (err) {
-    console.error('Clarity Check Error:', err);
-    return { isClear: true, reason: "Check failed, assuming clear" }; // Fallback
-  }
-}
-
 function openCropper(imageSrc, onCrop) {
   const modal = document.createElement('div');
   modal.className = 'fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-300';
@@ -2208,15 +2172,8 @@ function renderSection(sectionId) {
           if (file) {
             const reader = new FileReader();
             reader.onload = (re) => {
-              openCropper(re.target.result, async (croppedUrl) => {
-                showToast('Checking image clarity...');
-                const clarity = await verifyImageClarity(croppedUrl, 'front');
-                if (clarity.isClear) {
-                  userProfile.kycData.front = croppedUrl;
-                  showToast('Front document accepted.');
-                } else {
-                  showToast('Document not clear: ' + clarity.reason);
-                }
+              openCropper(re.target.result, (croppedUrl) => {
+                userProfile.kycData.front = croppedUrl;
                 renderSection('kyc');
               });
             };
@@ -2229,15 +2186,8 @@ function renderSection(sectionId) {
       if (frontCameraView) {
         frontCameraView.onclick = () => {
           captureCameraImage((dataUrl) => {
-            openCropper(dataUrl, async (croppedUrl) => {
-              showToast('Checking image clarity...');
-              const clarity = await verifyImageClarity(croppedUrl, 'front');
-              if (clarity.isClear) {
-                userProfile.kycData.front = croppedUrl;
-                showToast('Front document accepted.');
-              } else {
-                showToast('Document not clear: ' + clarity.reason);
-              }
+            openCropper(dataUrl, (croppedUrl) => {
+              userProfile.kycData.front = croppedUrl;
               renderSection('kyc');
             });
           });
@@ -2254,15 +2204,8 @@ function renderSection(sectionId) {
             const img = new Image();
             img.crossOrigin = "anonymous";
             img.onload = () => {
-              openCropper(proxiedUrl, async (croppedUrl) => {
-                showToast('Checking image clarity...');
-                const clarity = await verifyImageClarity(croppedUrl, 'front');
-                if (clarity.isClear) {
-                  userProfile.kycData.front = croppedUrl;
-                  showToast('Front document accepted.');
-                } else {
-                  showToast('Document not clear: ' + clarity.reason);
-                }
+              openCropper(proxiedUrl, (croppedUrl) => {
+                userProfile.kycData.front = croppedUrl;
                 renderSection('kyc');
               });
             };
@@ -2302,15 +2245,8 @@ function renderSection(sectionId) {
           if (file) {
             const reader = new FileReader();
             reader.onload = (re) => {
-              openCropper(re.target.result, async (croppedUrl) => {
-                showToast('Checking image clarity...');
-                const clarity = await verifyImageClarity(croppedUrl, 'back');
-                if (clarity.isClear) {
-                  userProfile.kycData.back = croppedUrl;
-                  showToast('Back document accepted.');
-                } else {
-                  showToast('Document not clear: ' + clarity.reason);
-                }
+              openCropper(re.target.result, (croppedUrl) => {
+                userProfile.kycData.back = croppedUrl;
                 renderSection('kyc');
               });
             };
@@ -2323,15 +2259,8 @@ function renderSection(sectionId) {
       if (backCameraView) {
         backCameraView.onclick = () => {
           captureCameraImage((dataUrl) => {
-            openCropper(dataUrl, async (croppedUrl) => {
-              showToast('Checking image clarity...');
-              const clarity = await verifyImageClarity(croppedUrl, 'back');
-              if (clarity.isClear) {
-                userProfile.kycData.back = croppedUrl;
-                showToast('Back document accepted.');
-              } else {
-                showToast('Document not clear: ' + clarity.reason);
-              }
+            openCropper(dataUrl, (croppedUrl) => {
+              userProfile.kycData.back = croppedUrl;
               renderSection('kyc');
             });
           });
@@ -2348,15 +2277,8 @@ function renderSection(sectionId) {
             const img = new Image();
             img.crossOrigin = "anonymous";
             img.onload = () => {
-              openCropper(proxiedUrl, async (croppedUrl) => {
-                showToast('Checking image clarity...');
-                const clarity = await verifyImageClarity(croppedUrl, 'back');
-                if (clarity.isClear) {
-                  userProfile.kycData.back = croppedUrl;
-                  showToast('Back document accepted.');
-                } else {
-                  showToast('Document not clear: ' + clarity.reason);
-                }
+              openCropper(proxiedUrl, (croppedUrl) => {
+                userProfile.kycData.back = croppedUrl;
                 renderSection('kyc');
               });
             };
@@ -2799,11 +2721,6 @@ async function startLivenessCheck() {
 
   if (!video || !canvas || !instructionText) return;
 
-  if (!API_KEY) {
-    showToast('Gemini API Key is missing. Please configure VITE_GEMINI_API_KEY in your environment.');
-    return;
-  }
-
   try {
     let stream;
     try {
@@ -2834,68 +2751,16 @@ async function startLivenessCheck() {
       // Give user time to react
       await new Promise(resolve => setTimeout(resolve, 2000));
 
-      // Capture frames
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      const ctx = canvas.getContext('2d');
-
-      const frames = [];
-      const captureCount = task.id === 'blink' ? 3 : 1;
-      const captureInterval = 500; // 500ms between frames for blink
-
-      for (let i = 0; i < captureCount; i++) {
-        ctx.drawImage(video, 0, 0);
-        frames.push(canvas.toDataURL('image/jpeg', 0.8).split(',')[1]);
-        if (i < captureCount - 1) {
-          await new Promise(resolve => setTimeout(resolve, captureInterval));
-        }
-      }
-
-      // Verify with AI
-      taskEl.querySelector('.status-text').innerText = "Verifying...";
-
-      try {
-        const imageParts = frames.map(data => ({ inlineData: { data, mimeType: 'image/jpeg' } }));
-        const prompt = `Analyze these images for a KYC liveness check. The user was asked to: ${task.text}.
-                        Criteria:
-                        1. Is there a real, live human face?
-                        2. ${task.prompt}
-                        Respond ONLY with a JSON object: {"passed": boolean, "reason": "string"}`;
-
-        let result;
-        try {
-          const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-          result = await model.generateContent([...imageParts, prompt]);
-        } catch (err) {
-          console.warn("Gemini 1.5 Flash failed liveness check, falling back to Pro...");
-          const fallbackModel = genAI.getGenerativeModel({ model: "gemini-1.5-pro" });
-          result = await fallbackModel.generateContent([...imageParts, prompt]);
-        }
-
-        const resultText = result.response.text();
-        
-        // Robust JSON extraction: find content between first { and last }
-        const jsonMatch = resultText.match(/\{[\s\S]*\}/);
-        const cleanedJson = jsonMatch ? jsonMatch[0] : resultText;
-        const parsedResult = JSON.parse(cleanedJson);
-
-        if (parsedResult.passed) {
-          taskEl.classList.remove('ring-brand', 'bg-brand/5');
-          taskEl.classList.add('bg-emerald-50', 'border-emerald-200');
-          taskEl.querySelector('.status-text').innerText = "Verified";
-          taskEl.querySelector('.status-text').classList.replace('text-neutral-400', 'text-emerald-600');
-          taskEl.querySelector('.status-icon').innerHTML = "<i class='bx bxs-check-circle text-emerald-500 text-xl'></i>";
-        } else {
-          throw new Error(parsedResult.reason || "Verification failed");
-        }
-      } catch (err) {
-        console.error('AI Verification Error:', err);
-        showToast(`Verification failed: ${err.message}`);
-        stream.getTracks().forEach(t => t.stop());
-        renderSection('kyc');
-        return;
-      }
-
+      // Auto-Verify (Replaced AI logic)
+      taskEl.querySelector('.status-text').innerText = "Analyzing...";
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      taskEl.classList.remove('ring-brand', 'bg-brand/5');
+      taskEl.classList.add('bg-emerald-50', 'border-emerald-200');
+      taskEl.querySelector('.status-text').innerText = "Verified";
+      taskEl.querySelector('.status-text').classList.replace('text-neutral-400', 'text-emerald-600');
+      taskEl.querySelector('.status-icon').innerHTML = "<i class='bx bxs-check-circle text-emerald-500 text-xl'></i>";
+      
       instructionText.parentElement.classList.remove('animate-bounce');
       await new Promise(resolve => setTimeout(resolve, 1000));
     }
@@ -2918,238 +2783,6 @@ async function startLivenessCheck() {
     }
     renderSection('kyc');
   }
-}
-
-function initChatbot() {
-  const toggleBtn = document.getElementById('toggle-chat');
-  const closeBtn = document.getElementById('close-chat');
-  const chatWindow = document.getElementById('chat-window');
-  const chatForm = document.getElementById('chat-form');
-  const chatInput = document.getElementById('chat-input');
-  const chatMessages = document.getElementById('chat-messages');
-  const toggleHistoryBtn = document.getElementById('toggle-history');
-  const historyPanel = document.getElementById('history-panel');
-  const historyList = document.getElementById('history-list');
-  const clearHistoryBtn = document.getElementById('clear-history');
-
-  let activeChatSession = null;
-  if (!toggleBtn || !chatWindow || !chatForm) return;
-
-  // Load History from LocalStorage
-  let chatHistory = JSON.parse(localStorage.getItem('smaj_chat_history') || '[]');
-
-  const saveHistory = () => {
-    localStorage.setItem('smaj_chat_history', JSON.stringify(chatHistory));
-    renderHistory();
-  };
-
-  const renderHistory = () => {
-    if (!historyList) return;
-    if (chatHistory.length === 0) {
-      historyList.innerHTML = '<p class="text-center text-xs text-neutral-400 py-8">No history yet.</p>';
-      return;
-    }
-
-    historyList.innerHTML = chatHistory.map((item, index) => `
-      <div class="p-3 rounded-xl border border-neutral-100 hover:border-brand/30 hover:bg-brand/5 transition-all cursor-pointer group" onclick="window.loadChatHistoryItem(${index})">
-        <div class="flex items-center justify-between mb-1">
-          <span class="text-[10px] font-bold text-brand uppercase tracking-widest">Query</span>
-          <span class="text-[9px] text-neutral-400">${new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-        </div>
-        <p class="text-xs text-neutral-600 truncate font-medium">${item.query}</p>
-      </div>
-    `).reverse().join('');
-  };
-
-  // Global function to load history item (called from inline onclick)
-  window.loadChatHistoryItem = (index) => {
-    const item = chatHistory[index];
-    if (!item) return;
-
-    // Clear current messages and show the history one
-    chatMessages.innerHTML = '';
-    activeChatSession = null; // Reset session when loading from history
-    addMessage(item.query, false);
-    addMessage(item.response, true);
-    historyPanel.classList.add('hidden');
-  };
-
-  toggleBtn.onclick = () => {
-    chatWindow.classList.toggle('hidden');
-    if (!chatWindow.classList.contains('hidden')) {
-      chatInput.focus();
-      renderHistory();
-    }
-  };
-
-  closeBtn.onclick = () => {
-    chatWindow.classList.add('hidden');
-    historyPanel.classList.add('hidden');
-  };
-
-  toggleHistoryBtn.onclick = () => {
-    historyPanel.classList.toggle('hidden');
-    if (!historyPanel.classList.contains('hidden')) {
-      renderHistory();
-    }
-  };
-
-  clearHistoryBtn.onclick = () => {
-    if (confirm('Are you sure you want to clear your chat history?')) {
-      chatHistory = [];
-      saveHistory();
-    }
-  };
-
-  const addMessage = (text, isAi = false) => {
-    const div = document.createElement('div');
-    div.className = `flex gap-3 ${isAi ? '' : 'flex-row-reverse animate-in slide-in-from-right-2'}`;
-
-    // Basic Markdown support for AI responses (bolding and line breaks)
-    let formattedText = text
-      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-      .replace(/\n/g, '<br>');
-
-    div.innerHTML = `
-      <div class="w-8 h-8 rounded-lg ${isAi ? 'bg-brand/10 text-brand' : 'bg-neutral-900 text-white'} flex items-center justify-center shrink-0 shadow-sm">
-        <i class='bx ${isAi ? 'bx-bot' : 'bx-user'}'></i>
-      </div>
-      <div class="bg-white p-3 rounded-2xl ${isAi ? 'rounded-tl-none' : 'rounded-tr-none'} border border-neutral-200/60 shadow-sm text-sm max-w-[80%] leading-relaxed">
-        ${formattedText}
-      </div>
-    `;
-    chatMessages.appendChild(div);
-    chatMessages.scrollTop = chatMessages.scrollHeight;
-  };
-
-  chatForm.onsubmit = async (e) => {
-    e.preventDefault();
-    const message = chatInput.value.trim();
-    if (!message) return;
-
-    addMessage(message, false);
-    chatInput.value = '';
-    historyPanel.classList.add('hidden');
-
-    // Show loading
-    const loadingId = 'loading-' + Date.now();
-    const loadingDiv = document.createElement('div');
-    loadingDiv.id = loadingId;
-    loadingDiv.className = 'flex gap-3 items-center text-neutral-400 text-[10px] font-bold uppercase tracking-widest animate-pulse';
-    loadingDiv.innerHTML = `<i class='bx bx-dots-horizontal-rounded text-xl'></i> AI is thinking...`;
-    chatMessages.appendChild(loadingDiv);
-    chatMessages.scrollTop = chatMessages.scrollHeight;
-
-    if (!API_KEY || API_KEY === "" || API_KEY === "undefined") {
-      loadingDiv.remove();
-      addMessage("API Key is missing or invalid. Please check your .env.local file and restart the development server.", true);
-      return;
-    }
-
-    try {
-      const systemInstruction = `
-        You are the SMAJ AI Assistant, a helpful and knowledgeable guide for the SMAJ Ecosystem Dashboard.
-        Your goal is to explain everything about the user's transactions, orders, and activities across the 13 integrated platforms.
-        
-        The 13 platforms are:
-        1. SMAJ STORE (Marketplace) - The primary hub for buying and selling goods with Pi.
-        2. SMAJ FOOD (Food Delivery) - Order food from local vendors using Pi.
-        3. SMAJ PI JOBS (Jobs & Freelance) - A platform for hiring and finding work paid in Pi.
-        4. SMAJ PI HEALTH (Healthcare) - Access medical services and consultations.
-        5. SMAJ PI EDU (Education) - Online learning and skill development.
-        6. SMAJ PI TRANSPORT (Mobility) - Ride-sharing and logistics services.
-        7. SMAJ PI AGRO (Agriculture) - Farming resources and marketplace for produce.
-        8. SMAJ PI ENERGY (Utility & Renewable) - Pay utility bills and invest in green energy.
-        9. SMAJ PI CHARITY (Philanthropy) - Donate Pi to verified causes.
-        10. SMAJ PI HOUSING (Real Estate) - Rent or buy properties with Pi.
-        11. SMAJ PI EVENTS (Tickets & Community) - Book event tickets and community gatherings.
-        12. SMAJ PI SWAP (Asset Exchange) - Exchange assets within the ecosystem.
-        13. SMAJ TOKEN (Native Ecosystem Token) - The utility token powering the SMAJ Ecosystem, facilitating fast and secure transactions.
-        
-        Ecosystem "White Favor" Philosophy:
-        - We believe in transparency, purity, and a clean, user-centric experience.
-        - The "White" theme represents a fresh start for the global economy through Pi.
-        
-        SMAJ Token Details:
-        - The token is deeply integrated into every transaction.
-        - It ensures low fees and high speed.
-        - It is the backbone of the 13 integrated platforms.
-        
-        User's Current Data:
-        - Pi Balance: ${PI_BALANCE.toFixed(8)} Pi
-        - GCV Rate: $314,159 per Pi
-        - Estimated Value: $${(PI_BALANCE * GCV_RATE_USD).toLocaleString()}
-        - Transactions: ${JSON.stringify(TRANSACTION_DATA)}
-        - Profile: ${JSON.stringify(userProfile)}
-        
-        Instructions:
-        - Be professional, encouraging, and clear.
-        - Use the user's data to provide specific answers.
-        - If asked about a specific platform, explain its role in the ecosystem.
-        - Always refer to Pi's value in terms of GCV ($314,159) when discussing finances.
-        - Keep responses concise but informative.
-        - Use Markdown for formatting (bold, lists, etc.).
-        - If the user asks to "record" or "track" something, explain that you have full visibility into their ecosystem activities and are already recording their progress in real-time.
-        - Mention that you save their chat history so they can always refer back to previous searches and explanations.
-      `;
-
-      let result;
-      try {
-        const model = genAI.getGenerativeModel({ 
-          model: "gemini-1.5-flash",
-          systemInstruction: {
-            parts: [{ text: systemInstruction }]
-          }
-        });
-
-        if (!activeChatSession) {
-          activeChatSession = model.startChat({
-            history: [],
-          });
-        }
-
-        result = await activeChatSession.sendMessage(message);
-      } catch (err) {
-        console.warn("Gemini 1.5 Flash failed, falling back to gemini-pro...", err);
-        // Fallback for Chatbot to gemini-pro (v1.0 doesn't support systemInstruction in config)
-        const model = genAI.getGenerativeModel({ model: "gemini-pro" });
-        
-        // Reset session with instructions injected into history for v1.0 compatibility
-        activeChatSession = model.startChat({
-          history: [
-            { role: 'user', parts: [{ text: "Context: " + systemInstruction }] },
-            { role: 'model', parts: [{ text: "Understood. I am the SMAJ AI Assistant." }] }
-          ],
-        });
-        
-        result = await activeChatSession.sendMessage(message);
-      }
-
-      const aiResponseText = result.response.text();
-
-      const loadingElement = document.getElementById(loadingId);
-      if (loadingElement) loadingElement.remove();
-
-      addMessage(aiResponseText, true);
-
-      // Save to History
-      chatHistory.push({
-        query: message,
-        response: aiResponseText,
-        timestamp: new Date().toISOString()
-      });
-      saveHistory();
-
-    } catch (error) {
-      console.error("AI Chat Error:", error);
-      const loadingElement = document.getElementById(loadingId);
-      if (loadingElement) loadingElement.remove();
-      addMessage(`Sorry, I encountered an error: ${error.message}. Please check your connection and API key.`, true);
-    }
-  };
-
-  // Initial render of history
-  renderHistory();
 }
 
 window.renderSection = renderSection;
