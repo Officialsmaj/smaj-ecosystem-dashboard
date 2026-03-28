@@ -481,6 +481,71 @@ window.downloadUserKYCData = () => {
   showToast('Profile data exported successfully!', 'success');
 };
 
+window.exportTransactionsCSV = () => {
+  if (TRANSACTION_DATA.length === 0) {
+    showToast('No transactions found to export.');
+    return;
+  }
+
+  const headers = ['Date', 'Description', 'Amount (Pi)', 'Type', 'Status'];
+  const rows = TRANSACTION_DATA.map(tx => [
+    tx.date,
+    `"${tx.project}"`,
+    tx.amount.toFixed(8),
+    tx.type,
+    tx.status
+  ]);
+
+  const csvContent = "data:text/csv;charset=utf-8," + [headers, ...rows].map(e => e.join(",")).join("\n");
+  const encodedUri = encodeURI(csvContent);
+  const link = document.createElement("a");
+  link.setAttribute("href", encodedUri);
+  link.setAttribute("download", `SMAJ_Ledger_${userProfile.username}_${new Date().toISOString().split('T')[0]}.csv`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  showToast('CSV Ledger exported successfully!', 'success');
+};
+
+window.exportTransactionsPDF = async () => {
+  if (TRANSACTION_DATA.length === 0) {
+    showToast('No transactions found to export.');
+    return;
+  }
+
+  showToast('Preparing PDF Document...', 'success');
+
+  try {
+    const { jsPDF } = await import('https://cdn.skypack.dev/jspdf');
+    const autoTable = await import('https://cdn.skypack.dev/jspdf-autotable');
+    
+    const doc = new jsPDF();
+    doc.setFontSize(18);
+    doc.setTextColor(125, 60, 255); // Brand Color
+    doc.text('SMAJ Ecosystem Wallet Ledger', 14, 22);
+    
+    doc.setFontSize(10);
+    doc.setTextColor(100);
+    doc.text(`Account: @${userProfile.username} (${userProfile.name})`, 14, 30);
+    doc.text(`Generated: ${new Date().toLocaleString()}`, 14, 35);
+
+    const body = TRANSACTION_DATA.map(tx => [tx.date, tx.project, `${tx.type === 'income' ? '+' : '-'}${tx.amount.toFixed(8)} Pi`, tx.status]);
+    
+    doc.autoTable({
+      startY: 45,
+      head: [['Date', 'Description', 'Amount', 'Status']],
+      body: body,
+      headStyles: { fillColor: [125, 60, 255] },
+    });
+
+    doc.save(`SMAJ_Ledger_${userProfile.username}.pdf`);
+    showToast('PDF Document exported successfully!', 'success');
+  } catch (err) {
+    console.error('PDF Export Error:', err);
+    showToast('Failed to generate PDF. Check connection.');
+  }
+};
+
 // --- Global Action Handler ---
 window.handleAction = (actionName) => {
   showToast(`${actionName} action triggered successfully!`, 'success');
@@ -627,11 +692,14 @@ window.handleSendPi = async () => {
   };
 };
 
-window.handleReceivePi = () => {
+window.handleReceivePi = async () => {
   if (!userProfile.walletAddress) return showToast('Please connect your Pi Wallet first');
   
   const address = userProfile.walletAddress;
-  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${address}`;
+
+  // Dynamically import QRious for secure local QR generation
+  const QRiousModule = await import('https://cdn.skypack.dev/qrious');
+  const QRious = QRiousModule.default;
 
   const modal = document.createElement('div');
   modal.className = 'fixed inset-0 z-[200] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-300';
@@ -645,8 +713,11 @@ window.handleReceivePi = () => {
             </button>
         </div>
         
-        <div class="bg-neutral-50 p-6 rounded-3xl flex items-center justify-center border border-neutral-100 shadow-inner">
-            <img src="${qrUrl}" alt="Wallet QR Code" class="w-48 h-48 rounded-xl shadow-lg border-4 border-white">
+        <div class="bg-neutral-50 p-6 rounded-3xl flex flex-col items-center justify-center border border-neutral-100 shadow-inner">
+            <canvas id="qr-canvas" class="w-48 h-48 rounded-xl shadow-lg border-4 border-white"></canvas>
+            <button id="download-qr" class="mt-4 text-[10px] font-black uppercase tracking-widest text-brand hover:text-brand-dark transition-colors flex items-center gap-1">
+                <i class='bx bx-download'></i> Download QR
+            </button>
         </div>
 
         <div class="space-y-2 text-left">
@@ -664,10 +735,27 @@ window.handleReceivePi = () => {
   `;
   document.body.appendChild(modal);
 
+  // Generate the QR code locally using canvas
+  new QRious({
+    element: modal.querySelector('#qr-canvas'),
+    value: address,
+    size: 300,
+    level: 'H',
+    foreground: '#7d3cff'
+  });
+
   modal.querySelector('#close-receive-modal').onclick = () => modal.remove();
   modal.querySelector('#copy-receive-addr').onclick = () => {
     navigator.clipboard.writeText(address);
     showToast('Wallet address copied to clipboard!', 'success');
+  };
+
+  modal.querySelector('#download-qr').onclick = () => {
+    const link = document.createElement('a');
+    link.download = `SMAJ_Wallet_QR_${userProfile.username}.png`;
+    link.href = modal.querySelector('#qr-canvas').toDataURL('image/png');
+    link.click();
+    showToast('QR Code saved to device', 'success');
   };
 };
 
@@ -1871,9 +1959,17 @@ const templates = {
       <div class="p-8 rounded-3xl border border-neutral-200/60 bg-white shadow-sm">
         <div class="flex items-center justify-between mb-8">
           <h3 class="text-xl font-bold">Recent Transactions</h3>
-          <button id="transactions-refresh" class="p-2 hover:bg-neutral-100 rounded-lg text-neutral-400 transition-all hover:text-brand" title="Refresh Transactions">
-            <i class='bx bx-refresh text-2xl'></i>
-          </button>
+          <div class="flex items-center gap-2">
+            <button onclick="window.exportTransactionsCSV()" class="px-3 py-1.5 bg-neutral-50 border border-neutral-100 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-neutral-100 transition-all flex items-center gap-1">
+              <i class='bx bx-file'></i> CSV
+            </button>
+            <button onclick="window.exportTransactionsPDF()" class="px-3 py-1.5 bg-neutral-50 border border-neutral-100 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-neutral-100 transition-all flex items-center gap-1">
+              <i class='bx bxs-file-pdf'></i> PDF
+            </button>
+            <button id="transactions-refresh" class="p-2 hover:bg-neutral-100 rounded-lg text-neutral-400 transition-all hover:text-brand" title="Refresh Transactions">
+              <i class='bx bx-refresh text-2xl'></i>
+            </button>
+          </div>
         </div>
         <div class="overflow-x-auto">
           <table class="w-full text-left">
