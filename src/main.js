@@ -1934,12 +1934,6 @@ const templates = {
             <div>
               <p class="text-neutral-400 text-sm font-medium mb-1">Total Pi Balance</p>
               <h3 class="text-3xl sm:text-4xl md:text-5xl font-black tracking-tight truncate">${PI_BALANCE.toFixed(8)} <span class="text-brand text-xl sm:text-2xl">Pi</span></h3>
-              <div class="mt-4 p-4 bg-white/5 rounded-2xl border border-white/10 backdrop-blur-sm">
-                <p class="text-neutral-500 text-[10px] font-bold uppercase tracking-widest mb-1">Estimated Value (GCV)</p>
-                <div class="flex items-baseline gap-2">
-                  <span class="text-2xl font-black text-brand">${formattedValue}</span>
-                  <span class="text-xs text-neutral-400 font-medium">@ $314,159/Pi</span>
-                </div>
               <div class="mt-4 p-4 min-h-[80px] bg-white/5 rounded-2xl border border-white/10 backdrop-blur-sm flex items-center justify-center">
                 ${!isWalletConnected ? `
                   <div class="text-center space-y-2">
