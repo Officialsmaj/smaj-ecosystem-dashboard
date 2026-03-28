@@ -1267,7 +1267,12 @@ const templates = {
         </div>
       </div>
       <div class="p-8 rounded-3xl border border-neutral-200/60 bg-white shadow-sm">
-        <h3 class="text-xl font-bold mb-8">Recent Transactions</h3>
+        <div class="flex items-center justify-between mb-8">
+          <h3 class="text-xl font-bold">Recent Transactions</h3>
+          <button id="transactions-refresh" class="p-2 hover:bg-neutral-100 rounded-lg text-neutral-400 transition-all hover:text-brand" title="Refresh Transactions">
+            <i class='bx bx-refresh text-2xl'></i>
+          </button>
+        </div>
         <div class="overflow-x-auto">
           <table class="w-full text-left">
             <thead>
@@ -2107,6 +2112,19 @@ function renderSection(sectionId) {
         renderSection('overview');
       };
     }
+
+    const refreshBtn = document.getElementById('balance-refresh');
+    if (refreshBtn) {
+      refreshBtn.onclick = () => {
+        const icon = refreshBtn.querySelector('i');
+        icon.classList.add('bx-spin');
+        setTimeout(() => {
+          icon.classList.remove('bx-spin');
+          showToast('Balance synchronized with Pi Mainnet!', 'success');
+          playSuccessSound(false);
+        }, 1500);
+      };
+    }
     initEcosystemChart();
   }
 
@@ -2476,6 +2494,19 @@ function renderSection(sectionId) {
   // Initialize Chart if in finance section
   if (sectionId === 'finance') {
     initTransactionChart();
+
+    const transRefreshBtn = document.getElementById('transactions-refresh');
+    if (transRefreshBtn) {
+      transRefreshBtn.onclick = () => {
+        const icon = transRefreshBtn.querySelector('i');
+        icon.classList.add('bx-spin');
+        setTimeout(() => {
+          icon.classList.remove('bx-spin');
+          showToast('Transaction history synchronized!', 'success');
+          playSuccessSound(false);
+        }, 1500);
+      };
+    }
   }
 
   // Initialize Chart if in analytics section
