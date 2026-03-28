@@ -916,8 +916,19 @@ function setWalletConnectionState(connected) {
     walletToggleText.innerText = isWalletConnected ? 'Disconnect Wallet' : 'Connect Wallet';
   }
   if (walletToggle) {
+    const icon = walletToggle.querySelector('i');
+    if (icon) {
+      icon.className = connected ? 'bx bx-log-out-circle text-xl' : 'bx bx-log-in-circle text-xl';
+    }
     walletToggle.classList.toggle('text-rose-500', isWalletConnected);
     walletToggle.classList.toggle('text-brand', !isWalletConnected);
+    walletToggle.classList.toggle('hover:bg-rose-50', isWalletConnected);
+    walletToggle.classList.toggle('hover:bg-brand/5', !isWalletConnected);
+  }
+
+  const dot = document.getElementById('wallet-status-dot');
+  if (dot) {
+    dot.className = connected ? 'w-2 h-2 rounded-full bg-brand animate-pulse' : 'w-2 h-2 rounded-full bg-rose-500';
   }
 }
 
@@ -1973,8 +1984,8 @@ const templates = {
               <span class="font-bold">Pi Mainnet</span>
             </div>
             <div>
-              <p class="text-neutral-500 text-xs font-bold uppercase mb-1">Address</p>
-              <span class="font-mono text-sm opacity-60 truncate block">${userProfile.walletAddress ? userProfile.walletAddress.substring(0, 6) + '...' + userProfile.walletAddress.substring(userProfile.walletAddress.length - 4) : 'Not Connected'}</span>
+              <p class="text-neutral-500 text-[10px] font-black uppercase mb-1 tracking-widest">Public Address</p>
+              <span class="font-mono text-[10px] sm:text-xs opacity-60 break-all block leading-relaxed" title="${userProfile.walletAddress || ''}">${userProfile.walletAddress || 'Not Connected'}</span>
             </div>
           </div>
         </div>
@@ -3899,6 +3910,8 @@ async function initSession() {
       userProfile.walletAddress = user.wallet_address;
       setWalletConnectionState(true);
       showWelcomePopup(user.username);
+        } else {
+          setWalletConnectionState(false);
     }
   }
   
