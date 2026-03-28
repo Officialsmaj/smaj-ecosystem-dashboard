@@ -1082,17 +1082,25 @@ const templates = {
             <div class="space-y-6">
               <div class="p-8 rounded-3xl border border-neutral-200/60 bg-white shadow-sm space-y-6">
                 <h3 class="text-xl font-bold">Liveness Instructions</h3>
-                <div class="space-y-4">
+                <div class="grid grid-cols-1 gap-4">
                   ${livenessTasks.map(task => `
-                    <div id="task-${task.id}" class="flex items-center gap-4 p-4 rounded-2xl bg-neutral-50 border border-neutral-100 transition-all opacity-50">
-                      <div class="w-10 h-10 rounded-xl bg-white flex items-center justify-center shadow-sm">
-                        <i class='bx ${task.id === 'blink' ? 'bx-low-vision' : task.id === 'left' ? 'bx-undo' : 'bx-redo'} text-xl'></i>
+                    <div id="task-${task.id}" class="group flex flex-col gap-3 p-5 rounded-3xl bg-white border border-neutral-100 transition-all duration-500 opacity-40 shadow-sm relative overflow-hidden">
+                      <!-- Progress Bar Overlay (Hidden by default) -->
+                      <div class="task-progress absolute bottom-0 left-0 h-1 bg-brand/20 w-0 transition-all duration-[1500ms] ease-linear"></div>
+                      
+                      <div class="flex items-center gap-4">
+                        <div class="task-icon-container w-12 h-12 rounded-2xl bg-neutral-50 text-neutral-400 flex items-center justify-center transition-all duration-500">
+                          <i class='bx ${task.id === 'blink' ? 'bx-low-vision' : task.id === 'left' ? 'bx-undo' : 'bx-redo'} text-2xl'></i>
+                        </div>
+                        <div class="flex-1">
+                          <p class="text-sm font-bold text-neutral-600 transition-colors duration-500 task-label">${task.text}</p>
+                          <div class="flex items-center gap-2">
+                            <span class="w-1.5 h-1.5 rounded-full bg-neutral-300 status-dot"></span>
+                            <p class="text-[10px] font-black text-neutral-400 uppercase tracking-widest status-text">Pending</p>
+                          </div>
+                        </div>
+                        <div class="status-icon w-8 h-8 flex items-center justify-center"></div>
                       </div>
-                      <div class="flex-1">
-                        <p class="text-sm font-bold">${task.text}</p>
-                        <p class="text-[10px] text-neutral-400 uppercase tracking-tighter status-text">Waiting...</p>
-                      </div>
-                      <div class="status-icon"></div>
                     </div>
                   `).join('')}
                 </div>
@@ -1100,6 +1108,11 @@ const templates = {
               
               <div id="liveness-controls">
                 <button id="start-liveness" class="w-full py-4 bg-brand text-white rounded-2xl font-bold shadow-lg shadow-brand/20 hover:scale-[1.02] active:scale-[0.98] transition-all">
+              <div id="liveness-controls" class="flex gap-4">
+                <button onclick="userProfile.kycStep = 1; renderSection('kyc')" class="flex-1 py-4 bg-neutral-100 text-neutral-600 rounded-2xl font-bold hover:bg-neutral-200 transition-all">
+                  Back
+                </button>
+                <button id="start-liveness" class="flex-[2] py-4 bg-brand text-white rounded-2xl font-bold shadow-lg shadow-brand/20 hover:scale-[1.02] active:scale-[0.98] transition-all">
                   Start Verification
                 </button>
               </div>
@@ -1754,6 +1767,35 @@ function showWelcomePopup(name) {
   modal.querySelector('#close-welcome').onclick = () => modal.remove();
 }
 
+function playSuccessSound(isFinal = false) {
+  try {
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const oscillator = audioCtx.createOscillator();
+    const gainNode = audioCtx.createGain();
+
+    oscillator.connect(gainNode);
+    gainNode.connect(audioCtx.destination);
+
+    oscillator.type = 'sine';
+    if (isFinal) {
+      oscillator.frequency.setValueAtTime(523.25, audioCtx.currentTime); // C5
+      oscillator.frequency.exponentialRampToValueAtTime(880, audioCtx.currentTime + 0.2); // A5
+      gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.4);
+      oscillator.start();
+      oscillator.stop(audioCtx.currentTime + 0.4);
+    } else {
+      oscillator.frequency.setValueAtTime(660, audioCtx.currentTime); // E5
+      gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
+      oscillator.start();
+      oscillator.stop(audioCtx.currentTime + 0.15);
+    }
+  } catch (e) {
+    console.warn("Audio feedback not supported:", e);
+  }
+}
+
 function showToast(message, type = 'error') {
   const toast = document.createElement('div');
   toast.className = `fixed top-6 left-1/2 -translate-x-1/2 z-[150] px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-3 animate-in slide-in-from-top-4 duration-300 ${type === 'error' ? 'bg-rose-500 text-white' : 'bg-emerald-500 text-white'
@@ -2325,6 +2367,19 @@ function renderSection(sectionId) {
             return;
           }
 
+          // Age validation: Ensure user is at least 18 years old
+          const birthDate = new Date(dob);
+          const today = new Date();
+          let age = today.getFullYear() - birthDate.getFullYear();
+          const m = today.getMonth() - birthDate.getMonth();
+          if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+            age--;
+          }
+          if (age < 18) {
+            showToast('Eligibility Error: You must be at least 18 years old to complete KYC.');
+            return;
+          }
+
           if (!userProfile.kycData.front || !userProfile.kycData.back) {
             showToast('Please provide both front and back images of your document.');
             return;
@@ -2339,6 +2394,9 @@ function renderSection(sectionId) {
           renderSection('kyc');
         };
       }
+
+      // Initialize UI state for existing data
+      updateKycProgressUI();
     }
 
     // Step 2: Liveness Check
@@ -2737,30 +2795,45 @@ async function startLivenessCheck() {
     startBtn.innerHTML = "<i class='bx bx-loader-alt animate-spin'></i> Initializing...";
 
     // Wait for video to be ready and allow exposure to adjust
-    await new Promise(resolve => video.onloadedmetadata = resolve);
+    if (video.readyState < 1) {
+      await new Promise(resolve => video.onloadedmetadata = resolve);
+    }
     await new Promise(resolve => setTimeout(resolve, 1000)); // 1s delay for exposure adjustment
 
     for (const task of livenessTasks) {
       const taskEl = document.getElementById(`task-${task.id}`);
-      taskEl.classList.remove('opacity-50');
-      taskEl.classList.add('ring-2', 'ring-brand', 'bg-brand/5');
+      if (!taskEl) continue;
+
+      // Set Active state
+      taskEl.classList.replace('opacity-40', 'opacity-100');
+      taskEl.classList.add('border-brand/30', 'bg-brand/5', 'shadow-md');
+      taskEl.querySelector('.task-icon-container').classList.replace('bg-neutral-50', 'bg-brand/10');
+      taskEl.querySelector('.task-icon-container').classList.replace('text-neutral-400', 'text-brand');
+      taskEl.querySelector('.status-dot').classList.replace('bg-neutral-300', 'bg-brand');
+      taskEl.querySelector('.status-dot').classList.add('animate-pulse');
+      taskEl.querySelector('.status-text').innerText = "Performing Task...";
 
       instructionText.innerText = task.text;
       instructionText.parentElement.classList.add('animate-bounce');
 
-      // Give user time to react
       await new Promise(resolve => setTimeout(resolve, 2000));
 
-      // Auto-Verify (Replaced AI logic)
+      // Set Analyzing state
       taskEl.querySelector('.status-text').innerText = "Analyzing...";
+      taskEl.querySelector('.task-progress').style.width = '100%';
       await new Promise(resolve => setTimeout(resolve, 1500));
       
-      taskEl.classList.remove('ring-brand', 'bg-brand/5');
-      taskEl.classList.add('bg-emerald-50', 'border-emerald-200');
+      // Set Verified state
+      taskEl.classList.replace('bg-brand/5', 'bg-emerald-50');
+      taskEl.classList.replace('border-brand/30', 'border-emerald-200');
+      taskEl.querySelector('.status-dot').classList.replace('bg-brand', 'bg-emerald-500');
+      taskEl.querySelector('.status-dot').classList.remove('animate-pulse');
       taskEl.querySelector('.status-text').innerText = "Verified";
       taskEl.querySelector('.status-text').classList.replace('text-neutral-400', 'text-emerald-600');
       taskEl.querySelector('.status-icon').innerHTML = "<i class='bx bxs-check-circle text-emerald-500 text-xl'></i>";
       
+      playSuccessSound(false);
+
       instructionText.parentElement.classList.remove('animate-bounce');
       await new Promise(resolve => setTimeout(resolve, 1000));
     }
@@ -2768,6 +2841,7 @@ async function startLivenessCheck() {
     // Success
     instructionText.innerText = "Verification Complete!";
     instructionText.parentElement.classList.add('bg-emerald-500');
+    playSuccessSound(true);
 
     await new Promise(resolve => setTimeout(resolve, 2000));
     stream.getTracks().forEach(t => t.stop());
@@ -2786,5 +2860,4 @@ async function startLivenessCheck() {
 }
 
 window.renderSection = renderSection;
-initChatbot();
 fetchCountries().then(() => renderSection(activeSection));
