@@ -1106,8 +1106,6 @@ const templates = {
                 </div>
               </div>
               
-              <div id="liveness-controls">
-                <button id="start-liveness" class="w-full py-4 bg-brand text-white rounded-2xl font-bold shadow-lg shadow-brand/20 hover:scale-[1.02] active:scale-[0.98] transition-all">
               <div id="liveness-controls" class="flex gap-4">
                 <button onclick="userProfile.kycStep = 1; renderSection('kyc')" class="flex-1 py-4 bg-neutral-100 text-neutral-600 rounded-2xl font-bold hover:bg-neutral-200 transition-all">
                   Back
