@@ -1159,6 +1159,20 @@ const templates = {
 
     return `
     <div class="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <!-- Mobile Wallet CTA: Prominent on mobile when disconnected -->
+      ${!isWalletConnected ? `
+        <div class="lg:hidden p-6 rounded-3xl bg-brand text-white shadow-xl shadow-brand/20 flex flex-col items-center text-center space-y-4">
+          <div class="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center">
+            <i class='bx bx-wallet text-2xl'></i>
+          </div>
+          <div>
+            <h3 class="font-bold text-lg">Connect Your Pi Wallet</h3>
+            <p class="text-xs opacity-80">Access your real balance and ecosystem services.</p>
+          </div>
+          <button onclick="document.getElementById('wallet-toggle').click()" class="w-full py-4 bg-white text-brand rounded-2xl font-bold text-sm hover:bg-neutral-50 transition-all">Connect Now</button>
+        </div>
+      ` : ''}
+
       <!-- Ticker -->
       <div class="overflow-hidden bg-neutral-900 text-white py-2 rounded-2xl relative">
         <div class="flex whitespace-nowrap animate-marquee">
@@ -1926,6 +1940,21 @@ const templates = {
                   <span class="text-2xl font-black text-brand">${formattedValue}</span>
                   <span class="text-xs text-neutral-400 font-medium">@ $314,159/Pi</span>
                 </div>
+              <div class="mt-4 p-4 min-h-[80px] bg-white/5 rounded-2xl border border-white/10 backdrop-blur-sm flex items-center justify-center">
+                ${!isWalletConnected ? `
+                  <div class="text-center space-y-2">
+                    <p class="text-[10px] font-black uppercase text-neutral-500">Authentication Required</p>
+                    <button onclick="document.getElementById('wallet-toggle').click()" class="px-6 py-2 bg-brand text-white rounded-xl text-xs font-bold">Connect Wallet</button>
+                  </div>
+                ` : `
+                  <div class="w-full">
+                    <p class="text-neutral-500 text-[10px] font-bold uppercase tracking-widest mb-1">Estimated Value (GCV)</p>
+                    <div class="flex items-baseline gap-2">
+                      <span class="text-2xl font-black text-brand">${formattedValue}</span>
+                      <span class="text-xs text-neutral-400 font-medium">@ $314,159/Pi</span>
+                    </div>
+                  </div>
+                `}
               </div>
             </div>
             <div class="flex gap-3">
@@ -3756,9 +3785,19 @@ sidebarOverlay.onclick = () => toggleSidebar(false);
 const PI_NETWORK_HOME = 'https://officialsmaj.github.io/smajpihub/';
 
 // Initialize Pi SDK
-if (typeof Pi !== 'undefined') {
-  Pi.init({ version: "2.0", sandbox: false });
-}
+const initPiSDK = () => {
+  if (typeof Pi !== 'undefined') {
+    try {
+      // Note: Use sandbox: true during development/testnet phase
+      Pi.init({ version: "2.0", sandbox: false });
+    } catch (e) {
+      console.error("Pi SDK Init Error:", e);
+    }
+  } else {
+    console.warn("Pi SDK not detected. Wallet features require the Pi Browser.");
+  }
+};
+initPiSDK();
 
 navMenu.onclick = (e) => {
   const btn = e.target.closest('.nav-btn');
@@ -3774,6 +3813,9 @@ walletToggle.onclick = async () => {
       showToast('Pi SDK not detected. Please open this app in the Pi Browser.');
       return;
     }
+
+    walletToggle.disabled = true;
+    if (walletToggleText) walletToggleText.innerText = 'Connecting...';
 
     try {
       const scopes = ['username', 'payments', 'wallet_address'];
@@ -3800,8 +3842,12 @@ walletToggle.onclick = async () => {
       renderSection(activeSection);
     } catch (err) {
       console.error('Pi Auth Error:', err);
-      showToast('Authentication failed. Please try again.');
-      return;
+      showToast(`Auth Error: ${err.message || 'Check Pi Browser settings'}`);
+    } finally {
+      walletToggle.disabled = false;
+      if (walletToggleText) {
+        walletToggleText.innerText = isWalletConnected ? 'Disconnect Wallet' : 'Connect Wallet';
+      }
     }
   } else {
     setWalletConnectionState(false);
