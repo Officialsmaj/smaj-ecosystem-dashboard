@@ -71,6 +71,7 @@ function createDefaultUserProfile() {
   return {
     name: 'Unconnected Pioneer',
     username: 'anonymous',
+    walletAddress: null,
     email: 'officialsmaj@gmail.com',
     phone: '+234 800 000 0000',
     address: 'Lagos, Nigeria',
@@ -80,6 +81,13 @@ function createDefaultUserProfile() {
     currency: 'USD',
     timezone: 'UTC+1',
     visibility: 'public',
+    joinedDate: new Date().toISOString(),
+    gender: '',
+    occupation: '',
+    nationality: '',
+    website: '',
+    socialTwitter: '',
+    socialTelegram: '',
     kycStatus: 'not_started',
     kycStep: 1,
     kycData: {
@@ -88,10 +96,18 @@ function createDefaultUserProfile() {
       pob: '',
       country: '',
       docType: '',
+      kycType: 'pioneer',
       front: null,
       back: null,
+      businessLicense: null,
+      businessRegNumber: '',
+      taxIdNumber: '',
+      storeName: '',
+      businessCategory: '',
+      businessAddress: '',
       frontMethod: 'upload',
       backMethod: 'upload',
+      businessLicenseMethod: 'upload',
       liveness: []
     }
   };
@@ -106,6 +122,364 @@ function resetUserProfileToDefaults() {
   Object.assign(userProfile, defaults);
   localStorage.removeItem('smaj_user_profile');
 }
+
+function calculateTrustScore(profile) {
+  let score = 0;
+  // Profile Completeness (Max 50 pts)
+  const fields = ['name', 'username', 'bio', 'avatar', 'email', 'phone', 'address', 'gender', 'occupation', 'nationality'];
+  fields.forEach(f => {
+    if (profile[f] && profile[f].length > 0) score += 5;
+  });
+
+  // KYC Status (Max 50 pts)
+  if (profile.kycStatus === 'verified') {
+    score += 50;
+  } else if (profile.kycStatus === 'pending') {
+    score += 25;
+  }
+
+  return score;
+}
+
+function getProfileCompleteness(profile) {
+  const fields = ['name', 'username', 'bio', 'avatar', 'email', 'phone', 'address', 'gender', 'occupation', 'nationality'];
+  const filledCount = fields.filter(f => profile[f] && profile[f].length > 0).length;
+  return Math.round((filledCount / fields.length) * 100);
+}
+
+function updateProfileCompletenessUI() {
+  const percent = getProfileCompleteness(userProfile);
+  const textEl = document.getElementById('profile-completeness-text');
+  const barEl = document.getElementById('profile-completeness-bar');
+  const trustTextEl = document.getElementById('profile-trust-score-text');
+  
+  if (textEl) textEl.innerText = `${percent}%`;
+  if (barEl) barEl.style.width = `${percent}%`;
+  if (trustTextEl) trustTextEl.innerText = `${calculateTrustScore(userProfile)}/100`;
+}
+
+// --- Admin Helpers ---
+window.viewBusinessLicense = (subId) => {
+  const sub = kycSubmissions.find(s => s.id === subId);
+  if (!sub || !sub.businessLicense) {
+    showToast('Document not found');
+    return;
+  }
+
+  const modal = document.createElement('div');
+  modal.className = 'fixed inset-0 z-[200] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-300';
+  modal.innerHTML = `
+    <div class="bg-white rounded-3xl w-full max-w-2xl overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300">
+      <div class="p-6 border-b border-neutral-100 flex items-center justify-between bg-neutral-50/50">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-brand/10 text-brand flex items-center justify-center">
+            <i class='bx bx-file text-2xl'></i>
+          </div>
+          <div>
+            <h3 class="text-lg font-bold">Business License</h3>
+            <p class="text-[10px] font-black uppercase tracking-widest text-neutral-400">${sub.storeName || sub.name} | ${sub.id}</p>
+          </div>
+        </div>
+        <button id="close-doc-modal" class="w-10 h-10 rounded-full hover:bg-neutral-100 flex items-center justify-center transition-colors text-neutral-400 hover:text-neutral-900">
+          <i class='bx bx-x text-2xl'></i>
+        </button>
+      </div>
+      <div class="p-8 bg-neutral-100 flex items-center justify-center min-h-[450px]">
+        <div class="rounded-2xl overflow-hidden border-2 border-white shadow-2xl bg-white max-w-full">
+          <img src="${sub.businessLicense}" class="max-w-full h-auto max-h-[60vh] object-contain">
+        </div>
+      </div>
+      <div class="p-6 bg-white border-t border-neutral-100 flex justify-end">
+        <button id="close-doc-btn" class="px-8 py-3 bg-brand text-white rounded-2xl font-bold shadow-lg shadow-brand/20 hover:scale-[1.02] active:scale-[0.98] transition-all">
+          Close Preview
+        </button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+
+  const close = () => modal.remove();
+  modal.querySelector('#close-doc-modal').onclick = close;
+  modal.querySelector('#close-doc-btn').onclick = close;
+};
+
+window.viewIDDocuments = (subId) => {
+  const sub = kycSubmissions.find(s => s.id === subId);
+  if (!sub || !sub.front || !sub.back) {
+    showToast('ID documents not found');
+    return;
+  }
+
+  const modal = document.createElement('div');
+  modal.className = 'fixed inset-0 z-[200] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-300';
+  modal.innerHTML = `
+    <div class="bg-white rounded-3xl w-full max-w-4xl overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300">
+      <div class="p-6 border-b border-neutral-100 flex items-center justify-between bg-neutral-50/50">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-brand/10 text-brand flex items-center justify-center">
+            <i class='bx bx-id-card text-2xl'></i>
+          </div>
+          <div>
+            <h3 class="text-lg font-bold">Identity Documents</h3>
+            <p class="text-[10px] font-black uppercase tracking-widest text-neutral-400">${sub.name} | ${sub.id}</p>
+          </div>
+        </div>
+        <button id="close-id-modal" class="w-10 h-10 rounded-full hover:bg-neutral-100 flex items-center justify-center transition-colors text-neutral-400 hover:text-neutral-900">
+          <i class='bx bx-x text-2xl'></i>
+        </button>
+      </div>
+      <div class="p-8 bg-neutral-100 grid grid-cols-1 md:grid-cols-2 gap-6 max-h-[70vh] overflow-y-auto">
+        <div class="space-y-2">
+          <p class="text-xs font-bold text-neutral-400 uppercase tracking-widest text-center">Front Side</p>
+          <div class="rounded-2xl overflow-hidden border-2 border-white shadow-lg bg-white">
+            <img src="${sub.front}" class="w-full h-auto object-contain">
+          </div>
+        </div>
+        <div class="space-y-2">
+          <p class="text-xs font-bold text-neutral-400 uppercase tracking-widest text-center">Back Side</p>
+          <div class="rounded-2xl overflow-hidden border-2 border-white shadow-lg bg-white">
+            <img src="${sub.back}" class="w-full h-auto object-contain">
+          </div>
+        </div>
+        ${sub.liveness && sub.liveness.length > 0 ? `
+          <div class="md:col-span-2 pt-6 border-t border-neutral-100">
+            <p class="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-4">AI Liveness Frames</p>
+            <div class="grid grid-cols-3 gap-4">
+              ${sub.liveness.map((img, i) => `
+                <div class="space-y-2">
+                  <div class="aspect-square rounded-xl overflow-hidden border-2 border-white shadow-md bg-white">
+                    <img src="${img}" class="w-full h-full object-cover">
+                  </div>
+                  <p class="text-[9px] font-black text-center text-neutral-400 uppercase">${livenessTasks[i]?.text || 'Frame ' + (i+1)}</p>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        ` : ''}
+      </div>
+      <div class="p-6 bg-white border-t border-neutral-100 flex justify-end">
+        <button id="close-id-btn" class="px-8 py-3 bg-brand text-white rounded-2xl font-bold shadow-lg shadow-brand/20 hover:scale-[1.02] active:scale-[0.98] transition-all">
+          Close Preview
+        </button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+
+  const close = () => modal.remove();
+  modal.querySelector('#close-id-modal').onclick = close;
+  modal.querySelector('#close-id-btn').onclick = close;
+};
+
+window.downloadKYCArchive = async (subId) => {
+  const sub = kycSubmissions.find(s => s.id === subId);
+  if (!sub) return showToast('Submission data not found');
+
+  showToast('Preparing ZIP Archive...', 'success');
+  
+  try {
+    // Dynamically import JSZip from CDN for the export
+    const JSZipModule = await import('https://cdn.skypack.dev/jszip');
+    const JSZip = JSZipModule.default;
+    const zip = new JSZip();
+    const folder = zip.folder(`${sub.id}_${sub.name.replace(/\s+/g, '_')}`);
+
+    // Helper to add base64 images to zip
+    const addBase64ToZip = (name, base64Data) => {
+      if (!base64Data) return;
+      const data = base64Data.split(',')[1];
+      folder.file(name, data, { base64: true });
+    };
+
+    addBase64ToZip('ID_Front.jpg', sub.front);
+    addBase64ToZip('ID_Back.jpg', sub.back);
+    
+    if (sub.businessLicense) {
+      addBase64ToZip('Business_License.jpg', sub.businessLicense);
+    }
+
+    if (sub.liveness) {
+      sub.liveness.forEach((img, i) => {
+        addBase64ToZip(`Liveness_Frame_${i + 1}.jpg`, img);
+      });
+    }
+
+    // Add metadata summary
+    const metadata = `Submission ID: ${sub.id}\nUser: ${sub.name}\nDate: ${sub.date}\nCountry: ${sub.country}\nType: ${sub.kycType || 'Pioneer'}\nTIN: ${sub.taxIdNumber || 'N/A'}\nStore: ${sub.storeName || 'N/A'}`;
+    folder.file('metadata.txt', metadata);
+
+    const content = await zip.generateAsync({ type: 'blob' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(content);
+    link.download = `${sub.id}_KYC_Archive.zip`;
+    link.click();
+    
+    showToast('Archive downloaded successfully', 'success');
+  } catch (err) {
+    console.error('ZIP Error:', err);
+    showToast('Failed to create ZIP archive');
+  }
+};
+
+window.bulkRejectKYC = () => {
+  const selected = Array.from(document.querySelectorAll('.admin-sub-select:checked')).map(cb => cb.dataset.id);
+  if (selected.length === 0) {
+    showToast('Please select at least one submission to reject');
+    return;
+  }
+
+  const modal = document.createElement('div');
+  modal.className = 'fixed inset-0 z-[200] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-300';
+  modal.innerHTML = `
+    <div class="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300">
+      <div class="p-6 border-b border-neutral-100 flex items-center justify-between bg-neutral-50/50">
+        <h3 class="text-lg font-bold">Reject Submissions (${selected.length} selected)</h3>
+        <button id="close-reject-modal" class="w-10 h-10 rounded-full hover:bg-neutral-100 flex items-center justify-center transition-colors text-neutral-400 hover:text-neutral-900">
+          <i class='bx bx-x text-2xl'></i>
+        </button>
+      </div>
+      <div class="p-8 space-y-6">
+        <div class="space-y-2">
+          <label class="text-xs font-bold text-neutral-400 uppercase tracking-widest">Rejection Reason</label>
+          <select id="rejection-reason-select" class="w-full px-4 py-3 rounded-xl bg-neutral-50 border border-neutral-100 focus:ring-2 focus:ring-rose-500 outline-none transition-all font-medium">
+            <option value="">Select a common reason</option>
+            <option value="Unclear Document">Unclear Document</option>
+            <option value="Face Mismatch">Face Mismatch</option>
+            <option value="Incomplete Information">Incomplete Information</option>
+            <option value="Document Expired">Document Expired</option>
+            <option value="Fraudulent Activity">Fraudulent Activity</option>
+            <option value="Other">Other (specify below)</option>
+          </select>
+        </div>
+        <div class="space-y-2" id="other-reason-container" style="display: none;">
+          <label class="text-xs font-bold text-neutral-400 uppercase tracking-widest">Other Reason</label>
+          <textarea id="other-rejection-reason" rows="3" placeholder="Please specify the rejection reason..." class="w-full px-4 py-3 rounded-xl bg-neutral-50 border border-neutral-100 focus:ring-2 focus:ring-rose-500 outline-none transition-all font-medium resize-none"></textarea>
+        </div>
+      </div>
+      <div class="p-6 bg-white border-t border-neutral-100 flex justify-end gap-3">
+        <button id="cancel-reject" class="px-6 py-3 rounded-xl font-bold text-neutral-500 hover:bg-neutral-100 transition-all">Cancel</button>
+        <button id="confirm-reject" class="px-8 py-3 bg-rose-500 text-white rounded-2xl font-bold shadow-lg shadow-rose-500/20 hover:scale-[1.02] active:scale-[0.98] transition-all">
+          Confirm Reject
+        </button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+
+  const close = () => modal.remove();
+  modal.querySelector('#close-reject-modal').onclick = close;
+  modal.querySelector('#cancel-reject').onclick = close;
+
+  const reasonSelect = modal.querySelector('#rejection-reason-select');
+  const otherReasonContainer = modal.querySelector('#other-reason-container');
+  const otherReasonTextarea = modal.querySelector('#other-rejection-reason');
+
+  reasonSelect.onchange = () => {
+    if (reasonSelect.value === 'Other') {
+      otherReasonContainer.style.display = 'block';
+    } else {
+      otherReasonContainer.style.display = 'none';
+    }
+  };
+
+  modal.querySelector('#confirm-reject').onclick = () => {
+    let rejectionReason = reasonSelect.value;
+    if (rejectionReason === 'Other') {
+      rejectionReason = otherReasonTextarea.value.trim();
+      if (!rejectionReason) {
+        showToast('Please specify the rejection reason.');
+        return;
+      }
+    } else if (!rejectionReason) {
+      showToast('Please select a rejection reason.');
+      return;
+    }
+
+    let rejectedCount = 0;
+    kycSubmissions.forEach(sub => {
+      if (selected.includes(sub.id) && sub.status === 'pending') {
+        sub.status = 'rejected';
+        sub.rejectionReason = rejectionReason;
+        showToast(`KYC for ${sub.name} (${sub.id}) has been rejected. Reason: ${rejectionReason}`, 'error');
+        rejectedCount++;
+      }
+    });
+
+    showToast(`Successfully rejected ${rejectedCount} submissions`, 'error');
+    renderSection('admin');
+    close();
+  };
+};
+
+window.toggleAdminSelectAll = (el) => {
+  document.querySelectorAll('.admin-sub-select').forEach(cb => cb.checked = el.checked);
+};
+
+window.bulkApproveKYC = () => {
+  const selected = Array.from(document.querySelectorAll('.admin-sub-select:checked')).map(cb => cb.dataset.id);
+  if (selected.length === 0) {
+    showToast('Please select at least one submission');
+    return;
+  }
+  
+  kycSubmissions.forEach(sub => {
+    if (selected.includes(sub.id) && sub.status === 'pending') {
+      sub.status = 'verified';
+      showToast(`KYC for ${sub.name} (${sub.id}) has been verified.`, 'success');
+    }
+  });
+  
+  showToast(`Successfully approved ${selected.length} submissions`, 'success');
+  renderSection('admin');
+};
+
+window.downloadUserKYCData = () => {
+  const data = {
+    personal: {
+      name: userProfile.name,
+      username: userProfile.username,
+      bio: userProfile.bio,
+      gender: userProfile.gender,
+      nationality: userProfile.nationality,
+      occupation: userProfile.occupation,
+      joinedDate: userProfile.joinedDate
+    },
+    contact: {
+      email: userProfile.email,
+      phone: userProfile.phone,
+      address: userProfile.address,
+      website: userProfile.website
+    },
+    social: {
+      twitter: userProfile.socialTwitter,
+      telegram: userProfile.socialTelegram
+    },
+    kyc_status: {
+      verified: userProfile.kycStatus === 'verified',
+      trustScore: calculateTrustScore(userProfile),
+      completeness: getProfileCompleteness(userProfile)
+    }
+  };
+
+  if (userProfile.kycData.kycType === 'vendor' && userProfile.kycStatus === 'verified') {
+    data.vendor_details = {
+      storeName: userProfile.kycData.storeName,
+      registrationNumber: userProfile.kycData.businessRegNumber,
+      taxId: userProfile.kycData.taxIdNumber,
+      category: userProfile.kycData.businessCategory,
+      businessAddress: userProfile.kycData.businessAddress
+    };
+  }
+
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `SMAJ_KYC_Export_${userProfile.username}.json`;
+  link.click();
+  URL.revokeObjectURL(url);
+  showToast('Profile data exported successfully!', 'success');
+};
 
 // --- Global Action Handler ---
 window.handleAction = (actionName) => {
@@ -172,36 +546,129 @@ window.handleAvatarChange = () => {
 window.handleSendPi = async () => {
   if (!isWalletConnected) return showToast('Please connect your Pi Wallet');
   
-  try {
-    const payment = await Pi.createPayment({
-      amount: 1.0, 
-      memo: "Transfer via SMAJ Ecosystem",
-      metadata: { type: "transfer" }
-    }, {
-      onReadyForServerApproval: (paymentId) => {
-        // POST to your backend: /api/pi/transactions/approve
-        showToast('Processing approval...', 'success');
-      },
-      onReadyForServerCompletion: async (paymentId, txid) => {
-        // POST to your backend: /api/pi/transactions/complete
-        showToast('Payment confirmed!', 'success');
-        // Refresh transaction list from MongoDB
-        const updated = await fetchBackendTransactions();
-        TRANSACTION_DATA = updated;
-        renderSection(activeSection);
-      },
-      onCancel: () => showToast('Payment cancelled'),
-      onError: (err) => showToast(err.message)
-    });
-  } catch (err) {
-    console.error(err);
-  }
+  // Create a modal for direct input
+  const modal = document.createElement('div');
+  modal.className = 'fixed inset-0 z-[200] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-300';
+  modal.innerHTML = `
+    <div class="bg-white rounded-3xl w-full max-w-sm overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300">
+      <div class="p-8 space-y-6">
+        <div class="flex items-center gap-3">
+            <div class="w-12 h-12 bg-brand/10 text-brand rounded-2xl flex items-center justify-center">
+                <i class='bx bx-send text-2xl'></i>
+            </div>
+            <h3 class="text-2xl font-bold">Send Pi</h3>
+        </div>
+        <div class="space-y-4">
+          <div class="space-y-2">
+            <label class="text-xs font-bold text-neutral-400 uppercase tracking-widest">Amount (Pi)</label>
+            <input type="number" id="send-pi-amount" placeholder="0.00" step="0.000001" min="0.000001" class="w-full px-4 py-3 rounded-xl bg-neutral-50 border border-neutral-100 focus:ring-2 focus:ring-brand outline-none transition-all font-medium">
+          </div>
+          <div class="space-y-2">
+            <label class="text-xs font-bold text-neutral-400 uppercase tracking-widest">Memo / Note</label>
+            <input type="text" id="send-pi-memo" placeholder="Payment for services..." class="w-full px-4 py-3 rounded-xl bg-neutral-50 border border-neutral-100 focus:ring-2 focus:ring-brand outline-none transition-all font-medium">
+          </div>
+        </div>
+        <div class="flex gap-3">
+          <button id="close-send-modal" class="flex-1 py-4 bg-neutral-100 rounded-2xl font-bold text-neutral-500 hover:bg-neutral-200 transition-all">Cancel</button>
+          <button id="submit-send-pi" class="flex-[2] py-4 bg-brand text-white rounded-2xl font-bold shadow-lg shadow-brand/20 hover:scale-[1.02] active:scale-[0.98] transition-all">
+            Confirm Payment
+          </button>
+        </div>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+
+  modal.querySelector('#close-send-modal').onclick = () => modal.remove();
+  
+  modal.querySelector('#submit-send-pi').onclick = async () => {
+    const amount = parseFloat(document.getElementById('send-pi-amount').value);
+    const memo = document.getElementById('send-pi-memo').value || "Transfer via SMAJ Ecosystem";
+
+    if (isNaN(amount) || amount <= 0) {
+      showToast('Please enter a valid Pi amount.');
+      return;
+    }
+
+    modal.remove();
+    showToast('Connecting to Pi Wallet...', 'success');
+
+    try {
+      await Pi.createPayment({
+        amount: amount,
+        memo: memo,
+        metadata: { type: "direct_transfer", platform: "SMAJ Ecosystem" }
+      }, {
+        onReadyForServerApproval: (paymentId) => {
+          showToast('Payment submitted for approval', 'success');
+        },
+        onReadyForServerCompletion: (paymentId, txid) => {
+          // Update local state for immediate feedback
+          PI_BALANCE -= amount;
+          TRANSACTION_DATA.unshift({
+            date: new Date().toISOString().split('T')[0],
+            project: memo,
+            amount: amount,
+            type: 'expense',
+            status: 'Completed'
+          });
+
+          showToast('Transaction Successful!', 'success');
+          playSuccessSound(true);
+          renderSection(activeSection);
+        },
+        onCancel: () => showToast('Transaction cancelled'),
+        onError: (err) => showToast('Wallet Error: ' + err.message)
+      });
+    } catch (err) {
+      console.error(err);
+      showToast('Payment flow interrupted');
+    }
+  };
 };
 
 window.handleReceivePi = () => {
-  const addr = "GA7H...P91X"; // Fetch actual wallet address from session
-  navigator.clipboard.writeText(addr);
-  showToast('Wallet address copied to clipboard!', 'success');
+  if (!userProfile.walletAddress) return showToast('Please connect your Pi Wallet first');
+  
+  const address = userProfile.walletAddress;
+  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${address}`;
+
+  const modal = document.createElement('div');
+  modal.className = 'fixed inset-0 z-[200] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-300';
+  modal.innerHTML = `
+    <div class="bg-white rounded-3xl w-full max-w-sm overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300">
+      <div class="p-8 text-center space-y-6">
+        <div class="flex items-center justify-between mb-2">
+            <h3 class="text-2xl font-bold">Receive Pi</h3>
+            <button id="close-receive-modal" class="w-10 h-10 rounded-full hover:bg-neutral-100 flex items-center justify-center transition-colors text-neutral-400 hover:text-neutral-900">
+                <i class='bx bx-x text-2xl'></i>
+            </button>
+        </div>
+        
+        <div class="bg-neutral-50 p-6 rounded-3xl flex items-center justify-center border border-neutral-100 shadow-inner">
+            <img src="${qrUrl}" alt="Wallet QR Code" class="w-48 h-48 rounded-xl shadow-lg border-4 border-white">
+        </div>
+
+        <div class="space-y-2 text-left">
+            <label class="text-[10px] font-black text-neutral-400 uppercase tracking-widest">Your Public Wallet Address</label>
+            <div class="p-4 bg-neutral-50 rounded-2xl border border-neutral-100 break-all font-mono text-xs text-neutral-600 leading-relaxed">
+                ${address}
+            </div>
+        </div>
+
+        <button id="copy-receive-addr" class="w-full py-4 bg-brand text-white rounded-2xl font-bold shadow-lg shadow-brand/20 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2">
+            <i class='bx bx-copy text-xl'></i> Copy Address
+        </button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+
+  modal.querySelector('#close-receive-modal').onclick = () => modal.remove();
+  modal.querySelector('#copy-receive-addr').onclick = () => {
+    navigator.clipboard.writeText(address);
+    showToast('Wallet address copied to clipboard!', 'success');
+  };
 };
 
 // --- Dashboard SSO Redirect ---
@@ -463,9 +930,10 @@ async function trustTokenFromUrl() {
 }
 
 let kycSubmissions = [
-  { id: 'SUB-001', userId: 'user_123', name: 'John Doe', status: 'pending', date: '2026-03-20', country: 'USA' },
-  { id: 'SUB-002', userId: 'user_456', name: 'Jane Smith', status: 'verified', date: '2026-03-18', country: 'UK' },
-  { id: 'SUB-003', userId: 'user_789', name: 'Amaka Obi', status: 'rejected', date: '2026-03-15', country: 'Nigeria' },
+  { id: 'SUB-001', userId: 'user_123', name: 'John Doe', status: 'pending', date: '2026-03-20', country: 'USA', front: 'https://placehold.co/600x400?text=ID+Front', back: 'https://placehold.co/600x400?text=ID+Back', liveness: [] },
+  { id: 'SUB-002', userId: 'user_456', name: 'Jane Smith', status: 'verified', date: '2026-03-18', country: 'UK', front: 'https://placehold.co/600x400?text=ID+Front', back: 'https://placehold.co/600x400?text=ID+Back', liveness: [] },
+  { id: 'SUB-003', userId: 'user_789', name: 'Amaka Obi', status: 'rejected', date: '2026-03-15', country: 'Nigeria', front: 'https://placehold.co/600x400?text=ID+Front', back: 'https://placehold.co/600x400?text=ID+Back', liveness: [] },
+  { id: 'SUB-004', userId: 'user_101', name: 'SMAJ Store Admin', status: 'pending', date: '2026-03-21', country: 'Nigeria', kycType: 'vendor', taxIdNumber: 'TIN-99887766', storeName: 'SMAJ Digital', businessLicense: 'https://placehold.co/600x400/7d3cff/white?text=Business+License', front: 'https://placehold.co/600x400?text=ID+Front', back: 'https://placehold.co/600x400?text=ID+Back', liveness: [], rejectionReason: 'Document expired' },
 ];
 
 const LANGUAGES = [
@@ -869,6 +1337,33 @@ const templates = {
 
           <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <div class="lg:col-span-2 space-y-8">
+              <!-- Account Type -->
+              <div class="p-8 rounded-3xl border border-neutral-200/60 bg-white shadow-sm space-y-6">
+                <h3 class="text-xl font-bold">Account Type</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <label class="cursor-pointer group">
+                    <input type="radio" name="kyc-type" value="pioneer" class="peer sr-only" ${userProfile.kycData.kycType === 'pioneer' ? 'checked' : ''}>
+                    <div class="p-6 rounded-2xl border-2 border-neutral-100 bg-neutral-50 group-hover:border-brand/30 transition-all peer-checked:border-brand peer-checked:bg-brand/5 peer-checked:text-brand">
+                      <div class="flex items-center gap-3 mb-2">
+                        <i class='bx bx-user text-2xl'></i>
+                        <p class="font-bold">Standard Pioneer</p>
+                      </div>
+                      <p class="text-xs text-neutral-500">For regular users, shoppers, and service seekers within the SMAJ Ecosystem.</p>
+                    </div>
+                  </label>
+                  <label class="cursor-pointer group">
+                    <input type="radio" name="kyc-type" value="vendor" class="peer sr-only" ${userProfile.kycData.kycType === 'vendor' ? 'checked' : ''}>
+                    <div class="p-6 rounded-2xl border-2 border-neutral-100 bg-neutral-50 group-hover:border-brand/30 transition-all peer-checked:border-brand peer-checked:bg-brand/5 peer-checked:text-brand">
+                      <div class="flex items-center gap-3 mb-2">
+                        <i class='bx bx-store text-2xl'></i>
+                        <p class="font-bold">Merchant / Vendor</p>
+                      </div>
+                      <p class="text-xs text-neutral-500">For business owners and service providers looking to list products on SMAJ Store or Food.</p>
+                    </div>
+                  </label>
+                </div>
+              </div>
+
               <!-- Personal Details -->
               <div class="p-8 rounded-3xl border border-neutral-200/60 bg-white shadow-sm space-y-6">
                 <h3 class="text-xl font-bold">Personal Details</h3>
@@ -1000,6 +1495,85 @@ const templates = {
                   </div>
                 </div>
               </div>
+
+              <!-- Business License (Vendor Only) -->
+              ${userProfile.kycData.kycType === 'vendor' ? `
+                <div class="p-8 rounded-3xl border border-neutral-200/60 bg-white shadow-sm space-y-8 animate-in fade-in slide-in-from-top-4 duration-500">
+                  <div class="space-y-4">
+                    <h3 class="text-xl font-bold">Business Registration</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div class="space-y-2">
+                        <label class="text-xs font-bold text-neutral-400 uppercase tracking-widest">Store / Business Name</label>
+                        <input type="text" id="kyc-store-name" value="${userProfile.kycData.storeName || ''}" placeholder="SMAJ Digital Store" class="w-full px-4 py-3 rounded-xl bg-neutral-50 border border-neutral-100 focus:ring-2 focus:ring-brand outline-none transition-all font-medium">
+                      </div>
+                      <div class="space-y-2">
+                        <label class="text-xs font-bold text-neutral-400 uppercase tracking-widest">Registration Number</label>
+                        <input type="text" id="kyc-reg-number" value="${userProfile.kycData.businessRegNumber || ''}" placeholder="RC-12345678" class="w-full px-4 py-3 rounded-xl bg-neutral-50 border border-neutral-100 focus:ring-2 focus:ring-brand outline-none transition-all font-medium">
+                      </div>
+                    </div>
+                    <div class="space-y-2">
+                      <label class="text-xs font-bold text-neutral-400 uppercase tracking-widest">Tax Identification Number (TIN)</label>
+                      <input type="text" id="kyc-tax-id" value="${userProfile.kycData.taxIdNumber || ''}" placeholder="TIN-12345678" class="w-full px-4 py-3 rounded-xl bg-neutral-50 border border-neutral-100 focus:ring-2 focus:ring-brand outline-none transition-all font-medium">
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div class="space-y-2">
+                        <label class="text-xs font-bold text-neutral-400 uppercase tracking-widest">Business Category</label>
+                        <select id="kyc-business-category" class="w-full px-4 py-3 rounded-xl bg-neutral-50 border border-neutral-100 focus:ring-2 focus:ring-brand outline-none transition-all font-medium">
+                          <option value="">Select Category</option>
+                          <option value="retail" ${userProfile.kycData.businessCategory === 'retail' ? 'selected' : ''}>Retail & E-commerce</option>
+                          <option value="food" ${userProfile.kycData.businessCategory === 'food' ? 'selected' : ''}>Food & Gastronomy</option>
+                          <option value="health" ${userProfile.kycData.businessCategory === 'health' ? 'selected' : ''}>Health & Medical</option>
+                          <option value="tech" ${userProfile.kycData.businessCategory === 'tech' ? 'selected' : ''}>Technology & Services</option>
+                        </select>
+                      </div>
+                      <div class="space-y-2">
+                        <label class="text-xs font-bold text-neutral-400 uppercase tracking-widest">Physical Business Address</label>
+                        <input type="text" id="kyc-business-address" value="${userProfile.kycData.businessAddress || ''}" placeholder="123 Ecosystem Way, Lagos" class="w-full px-4 py-3 rounded-xl bg-neutral-50 border border-neutral-100 focus:ring-2 focus:ring-brand outline-none transition-all font-medium">
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="flex items-center justify-between">
+                    <h3 class="text-xl font-bold">Business License Upload</h3>
+                    <div class="flex gap-1">
+                      <button onclick="userProfile.kycData.businessLicenseMethod = 'upload'; renderSection('kyc')" class="p-1.5 rounded-lg ${userProfile.kycData.businessLicenseMethod === 'upload' ? 'bg-brand text-white' : 'bg-neutral-100 text-neutral-500'} transition-all" title="File Upload">
+                        <i class='bx bx-upload'></i>
+                      </button>
+                      <button onclick="userProfile.kycData.businessLicenseMethod = 'camera'; renderSection('kyc')" class="p-1.5 rounded-lg ${userProfile.kycData.businessLicenseMethod === 'camera' ? 'bg-brand text-white' : 'bg-neutral-100 text-neutral-500'} transition-all" title="Device Camera">
+                        <i class='bx bx-camera'></i>
+                      </button>
+                      <button onclick="userProfile.kycData.businessLicenseMethod = 'url'; renderSection('kyc')" class="p-1.5 rounded-lg ${userProfile.kycData.businessLicenseMethod === 'url' ? 'bg-brand text-white' : 'bg-neutral-100 text-neutral-500'} transition-all" title="Direct URL">
+                        <i class='bx bx-link'></i>
+                      </button>
+                    </div>
+                  </div>
+                  <div id="kyc-license-container" class="relative group">
+                    ${userProfile.kycData.businessLicenseMethod === 'upload' ? `
+                      <div id="license-upload-view" class="kyc-view border-2 border-dashed border-neutral-200 rounded-2xl p-8 text-center space-y-2 hover:border-brand hover:bg-brand/5 transition-all cursor-pointer">
+                        <i class='bx bx-cloud-upload text-2xl text-neutral-400 group-hover:text-brand'></i>
+                        <p class="text-xs font-bold">Upload Business License / CAC Document</p>
+                        <input type="file" id="kyc-file-license" class="hidden">
+                      </div>
+                    ` : userProfile.kycData.businessLicenseMethod === 'camera' ? `
+                      <div id="license-camera-view" class="kyc-view border-2 border-brand/30 bg-brand/5 rounded-2xl p-8 text-center space-y-2 hover:border-brand transition-all cursor-pointer">
+                        <i class='bx bx-camera text-2xl text-brand'></i>
+                        <p class="text-xs font-bold text-brand">Capture Business License</p>
+                      </div>
+                    ` : `
+                      <div class="space-y-3">
+                        <input type="text" id="kyc-url-license" placeholder="Paste license image URL here..." class="w-full px-4 py-3 rounded-xl bg-neutral-50 border border-neutral-100 focus:ring-2 focus:ring-brand outline-none transition-all text-xs font-medium">
+                        <button id="license-url-btn" class="w-full py-2 bg-brand text-white rounded-xl text-xs font-bold">Fetch Image</button>
+                      </div>
+                    `}
+                    <div id="license-preview" class="${userProfile.kycData.businessLicense ? '' : 'hidden'} absolute inset-0 bg-white rounded-2xl border border-neutral-200 overflow-hidden">
+                      <img src="${userProfile.kycData.businessLicense || ''}" class="w-full h-full object-cover">
+                      <button data-side="businessLicense" class="kyc-reset-btn absolute top-2 right-2 w-8 h-8 bg-black/50 text-white rounded-full flex items-center justify-center hover:bg-black transition-colors">
+                        <i class='bx bx-x text-xl'></i>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ` : ''}
             </div>
 
             <div class="space-y-6">
@@ -1012,15 +1586,21 @@ const templates = {
                   ${checklistItem('doctype', 'Document Type Chosen', isDocTypeDone)}
                   ${checklistItem('front', 'Front Side Document', isFrontDone)}
                   ${checklistItem('back', 'Back Side Document', isBackDone)}
+                  ${userProfile.kycData.kycType === 'vendor' ? checklistItem('license', 'Business License Uploaded', !!userProfile.kycData.businessLicense) : ''}
+                  ${userProfile.kycData.kycType === 'vendor' ? checklistItem('regnumber', 'Reg Number Entered', userProfile.kycData.businessRegNumber?.length > 2) : ''}
+                  ${userProfile.kycData.kycType === 'vendor' ? checklistItem('taxid', 'TIN Provided', userProfile.kycData.taxIdNumber?.length > 4) : ''}
+                  ${userProfile.kycData.kycType === 'vendor' ? checklistItem('storename', 'Store Name Entered', userProfile.kycData.storeName?.length > 2) : ''}
+                  ${userProfile.kycData.kycType === 'vendor' ? checklistItem('buscat', 'Category Selected', !!userProfile.kycData.businessCategory) : ''}
+                  ${userProfile.kycData.kycType === 'vendor' ? checklistItem('busaddr', 'Address Provided', userProfile.kycData.businessAddress?.length > 5) : ''}
                 </ul>
                 
                 <div class="mt-8 pt-6 border-t border-neutral-100">
                   <div class="flex items-center justify-between mb-2">
                     <p class="text-[10px] font-black text-neutral-400 uppercase tracking-widest">Overall Progress</p>
-                    <p id="kyc-progress-text" class="text-xs font-bold text-brand">${Math.round(([isNameDone, isDobDone, isCountryDone, isDocTypeDone, isFrontDone, isBackDone].filter(Boolean).length / 6) * 100)}%</p>
+                    <p id="kyc-progress-text" class="text-xs font-bold text-brand">0%</p>
                   </div>
                   <div class="h-2 bg-neutral-100 rounded-full overflow-hidden">
-                    <div id="kyc-progress-bar" class="h-full bg-brand transition-all duration-500" style="width: ${Math.round(([isNameDone, isDobDone, isCountryDone, isDocTypeDone, isFrontDone, isBackDone].filter(Boolean).length / 6) * 100)}%"></div>
+                    <div id="kyc-progress-bar" class="h-full bg-brand transition-all duration-500" style="width: 0%"></div>
                   </div>
                 </div>
               </div>
@@ -1159,6 +1739,28 @@ const templates = {
                   <p class="text-xs text-neutral-500">${userProfile.kycData.country}</p>
                 </div>
               </div>
+              ${userProfile.kycData.kycType === 'vendor' ? `
+                <div class="space-y-4">
+                  <h4 class="text-xs font-bold text-neutral-400 uppercase tracking-widest">Business License</h4>
+                  <div class="aspect-video rounded-2xl overflow-hidden border border-neutral-100 max-w-sm">
+                    <img src="${userProfile.kycData.businessLicense}" class="w-full h-full object-cover">
+                  </div>
+                </div>
+                <div class="space-y-4">
+                  <h4 class="text-xs font-bold text-neutral-400 uppercase tracking-widest">Store Details</h4>
+                  <div class="space-y-1">
+                    <p class="text-sm font-bold uppercase">${userProfile.kycData.storeName}</p>
+                    <p class="text-xs text-neutral-600 font-bold italic">${userProfile.kycData.businessCategory}</p>
+                    <p class="text-xs text-neutral-500 font-mono">Reg: ${userProfile.kycData.businessRegNumber}</p>
+                    <p class="text-xs text-neutral-500 font-mono">TIN: ${userProfile.kycData.taxIdNumber}</p>
+                    <p class="text-[10px] text-neutral-400">${userProfile.kycData.businessAddress}</p>
+                  </div>
+                </div>
+              ` : ''}
+              <div class="space-y-4">
+                <h4 class="text-xs font-bold text-neutral-400 uppercase tracking-widest">Verification Tier</h4>
+                <p class="text-sm font-bold uppercase">${userProfile.kycData.kycType} KYC</p>
+              </div>
               <div class="space-y-4">
                 <h4 class="text-xs font-bold text-neutral-400 uppercase tracking-widest">Document</h4>
                 <p class="text-sm font-bold">${userProfile.kycData.docType}</p>
@@ -1261,7 +1863,7 @@ const templates = {
             </div>
             <div>
               <p class="text-neutral-500 text-xs font-bold uppercase mb-1">Address</p>
-              <span class="font-mono text-sm opacity-60">GA7H...P91X</span>
+              <span class="font-mono text-sm opacity-60">${userProfile.walletAddress ? userProfile.walletAddress.substring(0, 6) + '...' + userProfile.walletAddress.substring(userProfile.walletAddress.length - 4) : 'Not Connected'}</span>
             </div>
           </div>
         </div>
@@ -1476,7 +2078,7 @@ const templates = {
             </div>
             <h3 class="text-xl font-bold">${userProfile.name}</h3>
             <p class="text-sm text-neutral-500 mb-6">@${userProfile.username}</p>
-            <div class="flex items-center justify-center gap-2">
+            <div class="flex items-center justify-center gap-2 ${userProfile.kycStatus === 'verified' ? 'mb-6' : ''}">
               ${userProfile.kycStatus === 'verified' ? `
                 <span class="px-3 py-1 bg-brand/10 text-brand rounded-full text-[10px] font-black uppercase tracking-widest flex items-center gap-1">
                   <i class='bx bxs-check-circle'></i> Verified Pioneer
@@ -1485,6 +2087,11 @@ const templates = {
                 <span class="px-3 py-1 bg-neutral-100 text-neutral-400 rounded-full text-[10px] font-black uppercase tracking-widest">Unverified</span>
               `}
             </div>
+            ${userProfile.kycStatus === 'verified' ? `
+              <button onclick="window.downloadUserKYCData()" class="w-full py-3 bg-neutral-900 text-white rounded-2xl font-bold text-xs shadow-lg flex items-center justify-center gap-2 hover:bg-black transition-all">
+                <i class='bx bx-download'></i> Download KYC Data
+              </button>
+            ` : ''}
           </div>
 
           <div class="p-6 rounded-3xl border border-neutral-200/60 bg-white shadow-sm">
@@ -1492,11 +2099,11 @@ const templates = {
             <div class="space-y-4">
               <div class="flex items-center justify-between">
                 <span class="text-sm text-neutral-500">Joined</span>
-                <span class="text-sm font-bold">March 2024</span>
+                <span class="text-sm font-bold">${new Intl.DateTimeFormat(userProfile.language, { month: 'long', year: 'numeric' }).format(new Date(userProfile.joinedDate))}</span>
               </div>
               <div class="flex items-center justify-between">
                 <span class="text-sm text-neutral-500">Trust Score</span>
-                <span class="text-sm font-bold text-brand">98/100</span>
+                <span class="text-sm font-bold text-brand">${calculateTrustScore(userProfile)}/100</span>
               </div>
               <div class="flex items-center justify-between">
                 <span class="text-sm text-neutral-500">Referrals</span>
@@ -1524,6 +2131,22 @@ const templates = {
                   <input type="text" id="profile-username" value="${userProfile.username}" class="w-full pl-8 pr-4 py-3 rounded-xl bg-neutral-50 border border-neutral-100 focus:ring-2 focus:ring-brand outline-none transition-all font-medium">
                 </div>
               </div>
+              <div class="space-y-2">
+                <label class="text-xs font-bold text-neutral-400 uppercase tracking-widest">Gender</label>
+                <select id="profile-gender" class="w-full px-4 py-3 rounded-xl bg-neutral-50 border border-neutral-100 focus:ring-2 focus:ring-brand outline-none transition-all font-medium">
+                  <option value="">Select Gender</option>
+                  <option value="male" ${userProfile.gender === 'male' ? 'selected' : ''}>Male</option>
+                  <option value="female" ${userProfile.gender === 'female' ? 'selected' : ''}>Female</option>
+                  <option value="other" ${userProfile.gender === 'other' ? 'selected' : ''}>Other</option>
+                </select>
+              </div>
+              <div class="space-y-2">
+                <label class="text-xs font-bold text-neutral-400 uppercase tracking-widest">Nationality</label>
+                <select id="profile-nationality" class="w-full px-4 py-3 rounded-xl bg-neutral-50 border border-neutral-100 focus:ring-2 focus:ring-brand outline-none transition-all font-medium">
+                  <option value="">Select Country</option>
+                  ${countries.map(c => `<option value="${c.code}" ${userProfile.nationality === c.code ? 'selected' : ''}>${c.name}</option>`).join('')}
+                </select>
+              </div>
               <div class="md:col-span-2 space-y-2">
                 <label class="text-xs font-bold text-neutral-400 uppercase tracking-widest">Bio / About</label>
                 <textarea id="profile-bio" rows="3" class="w-full px-4 py-3 rounded-xl bg-neutral-50 border border-neutral-100 focus:ring-2 focus:ring-brand outline-none transition-all font-medium resize-none text-sm">${userProfile.bio}</textarea>
@@ -1545,8 +2168,32 @@ const templates = {
                 <input type="tel" id="profile-phone" value="${userProfile.phone}" class="w-full px-4 py-3 rounded-xl bg-neutral-50 border border-neutral-100 focus:ring-2 focus:ring-brand outline-none transition-all font-medium">
               </div>
               <div class="md:col-span-2 space-y-2">
+                <label class="text-xs font-bold text-neutral-400 uppercase tracking-widest">Occupation / Professional Title</label>
+                <input type="text" id="profile-occupation" value="${userProfile.occupation || ''}" placeholder="Software Engineer" class="w-full px-4 py-3 rounded-xl bg-neutral-50 border border-neutral-100 focus:ring-2 focus:ring-brand outline-none transition-all font-medium">
+              </div>
+              <div class="md:col-span-2 space-y-2">
                 <label class="text-xs font-bold text-neutral-400 uppercase tracking-widest">Physical Address</label>
                 <input type="text" id="profile-address" value="${userProfile.address}" class="w-full px-4 py-3 rounded-xl bg-neutral-50 border border-neutral-100 focus:ring-2 focus:ring-brand outline-none transition-all font-medium">
+              </div>
+              <div class="md:col-span-2 space-y-2">
+                <label class="text-xs font-bold text-neutral-400 uppercase tracking-widest">Personal Website</label>
+                <input type="url" id="profile-website" value="${userProfile.website || ''}" placeholder="https://yourwebsite.com" class="w-full px-4 py-3 rounded-xl bg-neutral-50 border border-neutral-100 focus:ring-2 focus:ring-brand outline-none transition-all font-medium">
+              </div>
+            </div>
+          </div>
+
+          <div class="p-8 rounded-3xl border border-neutral-200/60 bg-white shadow-sm">
+            <h3 class="text-lg font-bold mb-6 flex items-center gap-2">
+              <i class='bx bx-share-alt text-brand'></i> Social Profiles
+            </h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div class="space-y-2">
+                <label class="text-xs font-bold text-neutral-400 uppercase tracking-widest">X (Twitter) Username</label>
+                <input type="text" id="profile-socialTwitter" value="${userProfile.socialTwitter || ''}" placeholder="Username" class="w-full px-4 py-3 rounded-xl bg-neutral-50 border border-neutral-100 focus:ring-2 focus:ring-brand outline-none transition-all font-medium">
+              </div>
+              <div class="space-y-2">
+                <label class="text-xs font-bold text-neutral-400 uppercase tracking-widest">Telegram Username</label>
+                <input type="text" id="profile-socialTelegram" value="${userProfile.socialTelegram || ''}" placeholder="Username" class="w-full px-4 py-3 rounded-xl bg-neutral-50 border border-neutral-100 focus:ring-2 focus:ring-brand outline-none transition-all font-medium">
               </div>
             </div>
           </div>
@@ -1665,6 +2312,12 @@ const templates = {
           </div>
           <div class="flex gap-3">
             <button onclick="handleAction('Export Admin Data')" class="px-4 py-2 bg-white border border-neutral-200 rounded-xl text-sm font-bold hover:bg-neutral-50 transition-all">Export CSV</button>
+            <button onclick="window.bulkApproveKYC()" class="px-4 py-2 bg-emerald-600 text-white rounded-xl text-sm font-bold shadow-lg shadow-emerald-600/20 hover:scale-105 transition-all flex items-center gap-2">
+              <i class='bx bx-check-double text-xl'></i> Bulk Approve
+            </button>
+            <button onclick="window.bulkRejectKYC()" class="px-4 py-2 bg-rose-600 text-white rounded-xl text-sm font-bold shadow-lg shadow-rose-600/20 hover:scale-105 transition-all flex items-center gap-2">
+              <i class='bx bx-x-circle text-xl'></i> Bulk Reject
+            </button>
             <button id="admin-refresh" class="px-4 py-2 bg-brand text-white rounded-xl text-sm font-bold shadow-lg shadow-brand/20 hover:scale-105 transition-all flex items-center gap-2">
               <i class='bx bx-refresh text-xl'></i> Refresh Data
             </button>
@@ -1692,8 +2345,10 @@ const templates = {
             <table class="w-full text-left">
               <thead>
                 <tr class="border-b border-neutral-100">
+                  <th class="pb-4"><input type="checkbox" onchange="window.toggleAdminSelectAll(this)" class="rounded border-neutral-300"></th>
                   <th class="pb-4 text-xs font-bold text-neutral-400 uppercase tracking-widest">Submission ID</th>
                   <th class="pb-4 text-xs font-bold text-neutral-400 uppercase tracking-widest">User</th>
+                  <th class="pb-4 text-xs font-bold text-neutral-400 uppercase tracking-widest">Type / TIN</th>
                   <th class="pb-4 text-xs font-bold text-neutral-400 uppercase tracking-widest">Country</th>
                   <th class="pb-4 text-xs font-bold text-neutral-400 uppercase tracking-widest">Date</th>
                   <th class="pb-4 text-xs font-bold text-neutral-400 uppercase tracking-widest">Status</th>
@@ -1703,11 +2358,21 @@ const templates = {
               <tbody class="divide-y divide-neutral-50">
                 ${kycSubmissions.map(sub => `
                   <tr>
+                    <td class="py-4"><input type="checkbox" class="admin-sub-select rounded border-neutral-300" data-id="${sub.id}"></td>
                     <td class="py-4 text-sm font-mono text-neutral-500">${sub.id}</td>
                     <td class="py-4">
                       <div class="flex items-center gap-3">
                         <div class="w-8 h-8 bg-neutral-100 rounded-full flex items-center justify-center font-bold text-xs">${sub.name[0]}</div>
                         <span class="text-sm font-bold">${sub.name}</span>
+                      </div>
+                    </td>
+                    <td class="py-4">
+                      <div class="space-y-1">
+                        <span class="text-[10px] font-black uppercase px-2 py-0.5 rounded ${sub.kycType === 'vendor' ? 'bg-orange-100 text-orange-600' : 'bg-blue-100 text-blue-600'}">
+                          ${sub.kycType || 'pioneer'}
+                        </span>
+                        ${sub.kycType === 'vendor' && sub.taxIdNumber ? `<p class="text-xs font-mono text-neutral-400">TIN: ${sub.taxIdNumber}</p>` : ''}
+                        ${sub.kycType === 'vendor' && sub.storeName ? `<p class="text-[10px] font-bold text-neutral-500">${sub.storeName}</p>` : ''}
                       </div>
                     </td>
                     <td class="py-4 text-sm">${sub.country}</td>
@@ -1717,9 +2382,23 @@ const templates = {
         sub.status === 'rejected' ? 'bg-rose-100 text-rose-600' :
           'bg-amber-100 text-amber-600'
       }">${sub.status}</span>
+                      ${sub.status === 'rejected' && sub.rejectionReason ? `<p class="text-[9px] text-rose-500 mt-1">Reason: ${sub.rejectionReason}</p>` : ''}
                     </td>
                     <td class="py-4 text-right">
                       <div class="flex items-center justify-end gap-2">
+                        <button onclick="window.downloadKYCArchive('${sub.id}')" class="p-2 bg-neutral-900 text-white hover:bg-black rounded-lg transition-colors" title="Download Archive (ZIP)">
+                          <i class='bx bx-download text-xl'></i>
+                        </button>
+                        ${sub.front && sub.back ? `
+                          <button onclick="window.viewIDDocuments('${sub.id}')" class="p-2 bg-neutral-50 text-neutral-600 hover:bg-neutral-100 rounded-lg transition-colors" title="View ID Documents">
+                            <i class='bx bx-id-card text-xl'></i>
+                          </button>
+                        ` : ''}
+                        ${sub.kycType === 'vendor' && sub.businessLicense ? `
+                          <button onclick="window.viewBusinessLicense('${sub.id}')" class="p-2 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors" title="View Business License">
+                            <i class='bx bx-file-find text-xl'></i>
+                          </button>
+                        ` : ''}
                         ${sub.status === 'pending' ? `
                           <button class="p-2 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 rounded-lg transition-colors" title="Approve">
                             <i class='bx bx-check text-xl'></i>
@@ -1849,7 +2528,15 @@ function updateKycProgressUI() {
     { id: 'country', done: isCountryDone },
     { id: 'doctype', done: isDocTypeDone },
     { id: 'front', done: isFrontDone },
-    { id: 'back', done: isBackDone }
+    { id: 'back', done: isBackDone },
+    ...(userProfile.kycData.kycType === 'vendor' ? [
+      { id: 'license', done: !!userProfile.kycData.businessLicense },
+      { id: 'regnumber', done: userProfile.kycData.businessRegNumber?.length > 2 },
+      { id: 'taxid', done: userProfile.kycData.taxIdNumber?.length > 4 },
+      { id: 'storename', done: userProfile.kycData.storeName?.length > 2 },
+      { id: 'buscat', done: !!userProfile.kycData.businessCategory },
+      { id: 'busaddr', done: userProfile.kycData.businessAddress?.length > 5 }
+    ] : [])
   ];
 
   steps.forEach(step => {
@@ -1863,7 +2550,7 @@ function updateKycProgressUI() {
     }
   });
 
-  const progress = Math.round((steps.filter(s => s.done).length / 6) * 100);
+  const progress = Math.round((steps.filter(s => s.done).length / steps.length) * 100);
   const progressText = document.getElementById('kyc-progress-text');
   const progressBar = document.getElementById('kyc-progress-bar');
   if (progressText) progressText.innerText = `${progress}%`;
@@ -2138,8 +2825,15 @@ function renderSection(sectionId) {
         userProfile.email = document.getElementById('profile-email').value;
         userProfile.phone = document.getElementById('profile-phone').value;
         userProfile.address = document.getElementById('profile-address').value;
+        userProfile.gender = document.getElementById('profile-gender').value;
+        userProfile.nationality = document.getElementById('profile-nationality').value;
+        userProfile.occupation = document.getElementById('profile-occupation').value;
+        userProfile.website = document.getElementById('profile-website').value;
+        userProfile.socialTwitter = document.getElementById('profile-socialTwitter').value;
+        userProfile.socialTelegram = document.getElementById('profile-socialTelegram').value;
 
         localStorage.setItem('smaj_user_profile', JSON.stringify(userProfile));
+        updateProfileCompletenessUI();
         showToast('Profile updated successfully!', 'success');
 
         saveBtn.innerHTML = "<i class='bx bx-check'></i> Saved";
@@ -2151,7 +2845,20 @@ function renderSection(sectionId) {
 
     // Auto-save logic with debounce to ensure data persistence as the user types
     const autoSave = debounce(() => {
-      const ids = ['profile-name', 'profile-username', 'profile-bio', 'profile-email', 'profile-phone', 'profile-address'];
+      const ids = [
+        'profile-name', 
+        'profile-username', 
+        'profile-bio', 
+        'profile-email', 
+        'profile-phone', 
+        'profile-address',
+        'profile-gender',
+        'profile-nationality',
+        'profile-occupation',
+        'profile-website',
+        'profile-socialTwitter',
+        'profile-socialTelegram'
+      ];
       ids.forEach(id => {
         const el = document.getElementById(id);
         if (el) {
@@ -2161,10 +2868,24 @@ function renderSection(sectionId) {
       });
 
       localStorage.setItem('smaj_user_profile', JSON.stringify(userProfile));
+      updateProfileCompletenessUI();
       if (saveBtn) saveBtn.innerHTML = "<i class='bx bx-check'></i> Auto-saved";
     }, 1500);
 
-    ['profile-name', 'profile-username', 'profile-bio', 'profile-email', 'profile-phone', 'profile-address'].forEach(id => {
+    [
+      'profile-name', 
+      'profile-username', 
+      'profile-bio', 
+      'profile-email', 
+      'profile-phone', 
+      'profile-address',
+      'profile-gender',
+      'profile-nationality',
+      'profile-occupation',
+      'profile-website',
+      'profile-socialTwitter',
+      'profile-socialTelegram'
+    ].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.oninput = autoSave;
     });
@@ -2242,6 +2963,7 @@ function renderSection(sectionId) {
       const pobInput = document.getElementById('kyc-pob');
       const countrySelect = document.getElementById('kyc-country');
       const docTypeRadios = document.querySelectorAll('input[name="kyc-doc-type"]');
+      const kycTypeRadios = document.querySelectorAll('input[name="kyc-type"]');
 
       if (nameInput) nameInput.oninput = (e) => { userProfile.kycData.fullName = e.target.value; updateKycProgressUI(); };
       if (dobInput) dobInput.onchange = (e) => { userProfile.kycData.dob = e.target.value; updateKycProgressUI(); };
@@ -2250,6 +2972,39 @@ function renderSection(sectionId) {
       docTypeRadios.forEach(radio => {
         radio.onchange = (e) => { userProfile.kycData.docType = e.target.value; updateKycProgressUI(); };
       });
+      kycTypeRadios.forEach(radio => {
+        radio.onchange = (e) => { userProfile.kycData.kycType = e.target.value; renderSection('kyc'); };
+      });
+
+      const regNumberInput = document.getElementById('kyc-reg-number');
+      if (regNumberInput) regNumberInput.oninput = (e) => { 
+        userProfile.kycData.businessRegNumber = e.target.value; 
+        updateKycProgressUI(); 
+      };
+
+      const storeNameInput = document.getElementById('kyc-store-name');
+      if (storeNameInput) storeNameInput.oninput = (e) => { 
+        userProfile.kycData.storeName = e.target.value; 
+        updateKycProgressUI(); 
+      };
+
+      const busCatSelect = document.getElementById('kyc-business-category');
+      if (busCatSelect) busCatSelect.onchange = (e) => {
+        userProfile.kycData.businessCategory = e.target.value;
+        updateKycProgressUI();
+      };
+
+      const busAddrInput = document.getElementById('kyc-business-address');
+      if (busAddrInput) busAddrInput.oninput = (e) => {
+        userProfile.kycData.businessAddress = e.target.value;
+        updateKycProgressUI();
+      };
+
+      const taxIdInput = document.getElementById('kyc-tax-id');
+      if (taxIdInput) taxIdInput.oninput = (e) => {
+        userProfile.kycData.taxIdNumber = e.target.value;
+        updateKycProgressUI();
+      };
 
       const nextBtn = document.getElementById('next-to-liveness');
 
@@ -2399,6 +3154,59 @@ function renderSection(sectionId) {
         };
       }
 
+      // Business License Listeners
+      const licenseInput = document.getElementById('kyc-file-license');
+      const licenseUploadView = document.getElementById('license-upload-view');
+      const licenseCameraView = document.getElementById('license-camera-view');
+      const licenseUrlInput = document.getElementById('kyc-url-license');
+      const licenseUrlBtn = document.getElementById('license-url-btn');
+
+      if (licenseUploadView && licenseInput) {
+        licenseUploadView.onclick = () => licenseInput.click();
+        licenseInput.onchange = (e) => {
+          const file = e.target.files[0];
+          if (file) {
+            const reader = new FileReader();
+            reader.onload = (re) => {
+              openCropper(re.target.result, (croppedUrl) => {
+                userProfile.kycData.businessLicense = croppedUrl;
+                renderSection('kyc');
+              });
+            };
+            reader.readAsDataURL(file);
+            e.target.value = '';
+          }
+        };
+      }
+
+      if (licenseCameraView) {
+        licenseCameraView.onclick = () => {
+          captureCameraImage((dataUrl) => {
+            openCropper(dataUrl, (croppedUrl) => {
+              userProfile.kycData.businessLicense = croppedUrl;
+              renderSection('kyc');
+            });
+          });
+        };
+      }
+
+      if (licenseUrlBtn && licenseUrlInput) {
+        licenseUrlBtn.onclick = () => {
+          let url = licenseUrlInput.value.trim();
+          if (url) {
+            const img = new Image();
+            img.crossOrigin = "anonymous";
+            img.onload = () => {
+              openCropper(url, (croppedUrl) => {
+                userProfile.kycData.businessLicense = croppedUrl;
+                renderSection('kyc');
+              });
+            };
+            img.src = url;
+          }
+        };
+      }
+
       // Reset Buttons
       document.querySelectorAll('.kyc-reset-btn').forEach(btn => {
         btn.onclick = () => {
@@ -2408,8 +3216,79 @@ function renderSection(sectionId) {
         };
       });
 
+      async function verifyBusinessLicenseAI(storeName, regNumber, taxId, category, licenseBase64) {
+        const API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
+        if (!API_KEY) return { match: true, reason: "AI Verification skipped (No API Key)" };
+
+        const base64Image = licenseBase64.split(',')[1];
+        const prompt = `Verify if this Business License document belongs to a "${category}" business named "${storeName}" with Registration Number "${regNumber}" and Tax Identification Number "${taxId}". 
+        Check if the store name, registration number, tax ID, and business type on the document match or are legal variations of the provided details. 
+        Return ONLY a JSON object: {"match": boolean, "reason": "short explanation"}`;
+
+        try {
+          const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contents: [{
+                parts: [
+                  { text: prompt },
+                  { inline_data: { mime_type: "image/jpeg", data: base64Image } }
+                ]
+              }]
+            })
+          });
+          
+          const result = await response.json();
+          const text = result.candidates[0].content.parts[0].text;
+          const jsonMatch = text.match(/\{.*\}/s);
+          return jsonMatch ? JSON.parse(jsonMatch[0]) : { match: false, reason: "Could not parse AI response." };
+        } catch (err) {
+          console.error("Gemini AI Error:", err);
+          return { match: false, reason: "AI Analysis failed. Please check document clarity." };
+        }
+      }
+
+      async function verifyFaceMatchAI(idFrontBase64, livenessFrames) {
+        const API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
+        if (!API_KEY) return { match: true, confidence: 100, reason: "AI Verification skipped (No API Key)" };
+
+        const idFrontData = idFrontBase64.split(',')[1];
+        const livenessParts = livenessFrames.map(frame => ({
+          inline_data: { mime_type: "image/jpeg", data: frame.split(',')[1] }
+        }));
+
+        const prompt = `Compare the person in the Identity Document (Image 1) with the person in the liveness check frames (Images 2, 3, 4). 
+        Determine if they are the same person. Consider facial features, bone structure, and identifying marks.
+        Return ONLY a JSON object: {"match": boolean, "confidence": number, "reason": "short explanation"}`;
+
+        try {
+          const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contents: [{
+                parts: [
+                  { text: prompt },
+                  { inline_data: { mime_type: "image/jpeg", data: idFrontData } },
+                  ...livenessParts
+                ]
+              }]
+            })
+          });
+          
+          const result = await response.json();
+          const text = result.candidates[0].content.parts[0].text;
+          const jsonMatch = text.match(/\{.*\}/s);
+          return jsonMatch ? JSON.parse(jsonMatch[0]) : { match: false, reason: "Could not parse AI response." };
+        } catch (err) {
+          console.error("Gemini AI Face Match Error:", err);
+          return { match: false, reason: "AI Face Analysis failed." };
+        }
+      }
+
       if (nextBtn) {
-        nextBtn.onclick = () => {
+        nextBtn.onclick = async () => {
           const fullName = document.getElementById('kyc-fullname').value;
           const dob = document.getElementById('kyc-dob').value;
           const country = document.getElementById('kyc-country').value;
@@ -2436,6 +3315,53 @@ function renderSection(sectionId) {
           if (!userProfile.kycData.front || !userProfile.kycData.back) {
             showToast('Please provide both front and back images of your document.');
             return;
+          }
+
+          if (userProfile.kycData.kycType === 'vendor' && !userProfile.kycData.businessLicense) {
+            showToast('Please provide your business license or registration document.');
+            return;
+          }
+
+          if (userProfile.kycData.kycType === 'vendor' && (!userProfile.kycData.businessRegNumber || userProfile.kycData.businessRegNumber.length < 3)) {
+            showToast('Please enter a valid Business Registration Number.');
+            return;
+          }
+
+          if (userProfile.kycData.kycType === 'vendor' && (!userProfile.kycData.storeName || userProfile.kycData.storeName.length < 3)) {
+            showToast('Please enter a valid Store or Business Name.');
+            return;
+          }
+
+          if (userProfile.kycData.kycType === 'vendor') {
+            nextBtn.disabled = true;
+            nextBtn.innerHTML = "<i class='bx bx-loader-alt animate-spin'></i> AI Analyzing License...";
+            
+            if (!userProfile.kycData.taxIdNumber || userProfile.kycData.taxIdNumber.length < 5) {
+              showToast('Please enter a valid Tax Identification Number.');
+              nextBtn.disabled = false;
+              nextBtn.innerHTML = "Next: Face Verification <i class='bx bx-right-arrow-alt text-xl'></i>";
+              return;
+            }
+
+            if (!userProfile.kycData.businessCategory || !userProfile.kycData.businessAddress) {
+              showToast('Please provide a business category and physical address.');
+              nextBtn.disabled = false;
+              nextBtn.innerHTML = "Next: Face Verification <i class='bx bx-right-arrow-alt text-xl'></i>";
+              return;
+            }
+
+            const aiResult = await verifyBusinessLicenseAI(
+              userProfile.kycData.storeName, 
+              userProfile.kycData.businessRegNumber, 
+              userProfile.kycData.taxIdNumber,
+              userProfile.kycData.businessCategory, 
+              userProfile.kycData.businessLicense
+            );
+            if (!aiResult.match) {
+              showToast(`Verification Failed: ${aiResult.reason}`);
+              renderSection('kyc');
+              return;
+            }
           }
 
           userProfile.kycData.fullName = fullName;
@@ -2467,10 +3393,22 @@ function renderSection(sectionId) {
     if (userProfile.kycStep === 3) {
       const submitFinalBtn = document.getElementById('submit-kyc-final');
       if (submitFinalBtn) {
-        submitFinalBtn.onclick = () => {
+        submitFinalBtn.onclick = async () => {
           const agree = document.getElementById('kyc-agree-final').checked;
           if (!agree) {
             showToast('Please agree to the terms and conditions.');
+            return;
+          }
+
+          submitFinalBtn.disabled = true;
+          submitFinalBtn.innerHTML = "<i class='bx bx-loader-alt animate-spin'></i> AI Matching Face...";
+
+          const faceMatch = await verifyFaceMatchAI(userProfile.kycData.front, userProfile.kycData.liveness);
+          
+          if (!faceMatch.match && faceMatch.confidence < 70) {
+            showToast(`Face Match Failed: ${faceMatch.reason}`);
+            submitFinalBtn.disabled = false;
+            submitFinalBtn.innerHTML = "Submit For Final Review";
             return;
           }
 
@@ -2484,7 +3422,14 @@ function renderSection(sectionId) {
             name: userProfile.kycData.fullName,
             country: userProfile.kycData.country,
             date: new Date().toISOString().split('T')[0],
-            status: 'pending'
+            status: 'pending',
+            kycType: userProfile.kycData.kycType,
+            taxIdNumber: userProfile.kycData.taxIdNumber,
+            storeName: userProfile.kycData.storeName,
+            businessLicense: userProfile.kycData.businessLicense,
+            front: userProfile.kycData.front,
+            back: userProfile.kycData.back,
+            liveness: userProfile.kycData.liveness
           });
         };
       }
@@ -2746,6 +3691,7 @@ walletToggle.onclick = async () => {
       // Real Pi Username logic: Map identity to profile
       userProfile.name = auth.user.username;
       userProfile.username = auth.user.username;
+      userProfile.walletAddress = auth.user.wallet_address;
       
       // Persistence: Store in localStorage for session consistency
       localStorage.setItem('pi_user', JSON.stringify(auth.user));
@@ -2814,6 +3760,7 @@ async function initSession() {
       const user = JSON.parse(savedUser);
       userProfile.name = user.username;
       userProfile.username = user.username;
+      userProfile.walletAddress = user.wallet_address;
       setWalletConnectionState(true);
       showWelcomePopup(user.username);
     }
@@ -2868,6 +3815,8 @@ async function startLivenessCheck() {
     }
     await new Promise(resolve => setTimeout(resolve, 1000)); // 1s delay for exposure adjustment
 
+    userProfile.kycData.liveness = []; // Reset frames
+
     for (const task of livenessTasks) {
       const taskEl = document.getElementById(`task-${task.id}`);
       if (!taskEl) continue;
@@ -2885,6 +3834,13 @@ async function startLivenessCheck() {
       instructionText.parentElement.classList.add('animate-bounce');
 
       await new Promise(resolve => setTimeout(resolve, 2000));
+
+      // Capture frame for the review profile
+      const context = canvas.getContext('2d');
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      context.drawImage(video, 0, 0);
+      userProfile.kycData.liveness.push(canvas.toDataURL('image/jpeg', 0.8));
 
       // Set Analyzing state
       taskEl.querySelector('.status-text').innerText = "Analyzing...";
