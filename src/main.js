@@ -3079,7 +3079,9 @@ function initChatbot() {
 
       const model = genAI.getGenerativeModel({ 
         model: "gemini-1.5-flash",
-        systemInstruction: systemInstruction
+        systemInstruction: {
+          parts: [{ text: systemInstruction }]
+        }
       });
 
       if (!activeChatSession) {
