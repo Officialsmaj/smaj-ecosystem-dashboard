@@ -375,15 +375,7 @@ function setWalletConnectionState(connected) {
 function updateHeaderInfo() {
   const headerTitle = document.querySelector('main header h2');
   const headerSubtitle = document.querySelector('main header p');
-  if (headerTitle) {
-    const name = (userProfile.name && userProfile.name !== 'Unconnected Pioneer') 
-      ? userProfile.name 
-      : 'Pioneer';
-    headerTitle.textContent = `Welcome back, ${name}`;
-  }
-  if (headerSubtitle) {
-    headerSubtitle.textContent = 'Profile Dashboard Control Center';
-  }
+  // Header info logic removed per user request
 }
 
 function getTokenFromQuery() {
