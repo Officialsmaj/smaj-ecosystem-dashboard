@@ -1904,16 +1904,25 @@ function captureCameraImage(onCapture) {
 async function verifyImageClarity(dataUrl, side) {
   try {
     const base64Data = dataUrl.split(',')[1];
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-
     const prompt = `Analyze this KYC document image (${side} side). 
                     Check if the document is clearly visible, well-lit, and all text is legible.
                     Respond ONLY with a JSON object: {"isClear": boolean, "reason": "string"}`;
 
-    const result = await model.generateContent([
-      { inlineData: { data: base64Data, mimeType: "image/jpeg" } },
-      prompt,
-    ]);
+    let result;
+    try {
+      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+      result = await model.generateContent([
+        { inlineData: { data: base64Data, mimeType: "image/jpeg" } },
+        prompt,
+      ]);
+    } catch (err) {
+      console.warn("Gemini 1.5 Flash failed clarity check, falling back to Pro...");
+      const fallbackModel = genAI.getGenerativeModel({ model: "gemini-1.5-pro" });
+      result = await fallbackModel.generateContent([
+        { inlineData: { data: base64Data, mimeType: "image/jpeg" } },
+        prompt,
+      ]);
+    }
 
     return JSON.parse(result.response.text());
   } catch (err) {
@@ -2847,15 +2856,22 @@ async function startLivenessCheck() {
 
       try {
         const imageParts = frames.map(data => ({ inlineData: { data, mimeType: 'image/jpeg' } }));
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-
         const prompt = `Analyze these images for a KYC liveness check. The user was asked to: ${task.text}.
                         Criteria:
                         1. Is there a real, live human face?
                         2. ${task.prompt}
                         Respond ONLY with a JSON object: {"passed": boolean, "reason": "string"}`;
 
-        const result = await model.generateContent([...imageParts, prompt]);
+        let result;
+        try {
+          const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+          result = await model.generateContent([...imageParts, prompt]);
+        } catch (err) {
+          console.warn("Gemini 1.5 Flash failed liveness check, falling back to Pro...");
+          const fallbackModel = genAI.getGenerativeModel({ model: "gemini-1.5-pro" });
+          result = await fallbackModel.generateContent([...imageParts, prompt]);
+        }
+
         const resultText = result.response.text();
         
         // Robust JSON extraction: find content between first { and last }
@@ -3077,20 +3093,38 @@ function initChatbot() {
         - Mention that you save their chat history so they can always refer back to previous searches and explanations.
       `;
 
-      const model = genAI.getGenerativeModel({ 
-        model: "gemini-1.5-flash",
-        systemInstruction: {
-          parts: [{ text: systemInstruction }]
-        }
-      });
-
-      if (!activeChatSession) {
-        activeChatSession = model.startChat({
-          history: [],
+      let result;
+      try {
+        const model = genAI.getGenerativeModel({ 
+          model: "gemini-1.5-flash",
+          systemInstruction: {
+            parts: [{ text: systemInstruction }]
+          }
         });
+
+        if (!activeChatSession) {
+          activeChatSession = model.startChat({
+            history: [],
+          });
+        }
+
+        result = await activeChatSession.sendMessage(message);
+      } catch (err) {
+        console.warn("Gemini 1.5 Flash failed, falling back to gemini-pro...", err);
+        // Fallback for Chatbot to gemini-pro (v1.0 doesn't support systemInstruction in config)
+        const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+        
+        // Reset session with instructions injected into history for v1.0 compatibility
+        activeChatSession = model.startChat({
+          history: [
+            { role: 'user', parts: [{ text: "Context: " + systemInstruction }] },
+            { role: 'model', parts: [{ text: "Understood. I am the SMAJ AI Assistant." }] }
+          ],
+        });
+        
+        result = await activeChatSession.sendMessage(message);
       }
 
-      const result = await activeChatSession.sendMessage(message);
       const aiResponseText = result.response.text();
 
       const loadingElement = document.getElementById(loadingId);
