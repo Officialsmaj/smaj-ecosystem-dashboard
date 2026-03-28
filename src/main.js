@@ -461,7 +461,7 @@ async function trustTokenFromUrl() {
       throw new Error('Token is not active yet');
     }
     applySessionPayload(payload, token);
-    showToast(`Successfully redirected! Welcome back, ${payload.name || payload.username || 'Pioneer'}.`, 'success');
+    showToast(`Welcome to your SMAJ Ecosystem Dashboard, ${payload.name || payload.username || 'Pioneer'}! Your secure session has been synchronized.`, 'success');
   } catch (err) {
     console.warn('Session token verification failed:', err);
     showToast(`Unable to trust session token: ${err.message}`);
