@@ -1733,6 +1733,14 @@ const templates = {
 // --- Functions ---
 let currentCropper = null;
 
+function debounce(func, timeout = 1000) {
+  let timer;
+  return (...args) => {
+    clearTimeout(timer);
+    timer = setTimeout(() => { func.apply(this, args); }, timeout);
+  };
+}
+
 function showWelcomePopup(name) {
   if (sessionStorage.getItem('smaj_welcome_shown')) return;
   sessionStorage.setItem('smaj_welcome_shown', 'true');
@@ -2113,6 +2121,26 @@ function renderSection(sectionId) {
         }, 1000);
       };
     }
+
+    // Auto-save logic with debounce to ensure data persistence as the user types
+    const autoSave = debounce(() => {
+      const ids = ['profile-name', 'profile-username', 'profile-bio', 'profile-email', 'profile-phone', 'profile-address'];
+      ids.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+          const key = id.replace('profile-', '');
+          userProfile[key] = el.value;
+        }
+      });
+
+      localStorage.setItem('smaj_user_profile', JSON.stringify(userProfile));
+      if (saveBtn) saveBtn.innerHTML = "<i class='bx bx-check'></i> Auto-saved";
+    }, 1500);
+
+    ['profile-name', 'profile-username', 'profile-bio', 'profile-email', 'profile-phone', 'profile-address'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.oninput = autoSave;
+    });
   }
 
   if (sectionId === 'security') {
@@ -2389,6 +2417,7 @@ function renderSection(sectionId) {
           userProfile.kycData.docType = docType;
 
           userProfile.kycStep = 2;
+          localStorage.setItem('smaj_user_profile', JSON.stringify(userProfile));
           renderSection('kyc');
         };
       }
@@ -2419,6 +2448,7 @@ function renderSection(sectionId) {
           }
 
           userProfile.kycStatus = 'pending';
+          localStorage.setItem('smaj_user_profile', JSON.stringify(userProfile));
           renderSection('kyc');
 
           // Add to admin submissions
@@ -2845,6 +2875,7 @@ async function startLivenessCheck() {
     stream.getTracks().forEach(t => t.stop());
 
     userProfile.kycStep = 3;
+    localStorage.setItem('smaj_user_profile', JSON.stringify(userProfile));
     renderSection('kyc');
 
   } catch (err) {
